@@ -36,12 +36,27 @@ const emptyExperience: Experience = {
   raisonsChangement: "",
 };
 
+interface AssessFirstFiles {
+  swipe: File | null;
+  drive: File | null;
+  brain: File | null;
+  compatibilite: File | null;
+}
+
 export default function SynthesePage() {
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzingAF, setAnalyzingAF] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [transcript, setTranscript] = useState("");
   const [aiMessage, setAiMessage] = useState("");
+  const [afMessage, setAfMessage] = useState("");
+  const [afFiles, setAfFiles] = useState<AssessFirstFiles>({
+    swipe: null,
+    drive: null,
+    brain: null,
+    compatibilite: null,
+  });
 
   const [nom, setNom] = useState("");
   const [poste, setPoste] = useState("");
@@ -72,7 +87,9 @@ export default function SynthesePage() {
   const [gestionEnergie, setGestionEnergie] = useState("");
   const [comportementTravail, setComportementTravail] = useState("");
   const [priseDecision, setPriseDecision] = useState("");
+  const [priseDecisionDesc, setPriseDecisionDesc] = useState("");
   const [styleApprentissage, setStyleApprentissage] = useState("");
+  const [styleApprentissageDesc, setStyleApprentissageDesc] = useState("");
 
   const [tachesConfier, setTachesConfier] = useState("");
   const [tachesEviter, setTachesEviter] = useState("");
@@ -87,6 +104,70 @@ export default function SynthesePage() {
   const [qualitesMan, setQualitesMan] = useState("");
   const [pointsVigilance, setPointsVigilance] = useState("");
   const [recommandation, setRecommandation] = useState("");
+
+  const handleAnalyzeAssessFirst = async () => {
+    const hasFile = Object.values(afFiles).some((f) => f !== null);
+    if (!hasFile) return;
+    setAnalyzingAF(true);
+    setAfMessage("");
+    try {
+      const formData = new FormData();
+      if (afFiles.swipe) formData.append("swipe", afFiles.swipe);
+      if (afFiles.drive) formData.append("drive", afFiles.drive);
+      if (afFiles.brain) formData.append("brain", afFiles.brain);
+      if (afFiles.compatibilite) formData.append("compatibilite", afFiles.compatibilite);
+
+      const response = await fetch("/api/parse-assessfirst", {
+        method: "POST",
+        body: formData,
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+
+      const d = result.data;
+      if (d.stylePersonnel) setStylePersonnel(d.stylePersonnel);
+      if (d.styleDescription) setStyleDescription(d.styleDescription);
+      if (d.pfRelation?.length) setPointsForts((prev) => {
+        const updated = [...prev];
+        updated[0] = { ...updated[0], items: d.pfRelation.join("\n") };
+        return updated;
+      });
+      if (d.pfTravail?.length) setPointsForts((prev) => {
+        const updated = [...prev];
+        updated[1] = { ...updated[1], items: d.pfTravail.join("\n") };
+        return updated;
+      });
+      if (d.pfEmotions?.length) setPointsForts((prev) => {
+        const updated = [...prev];
+        updated[2] = { ...updated[2], items: d.pfEmotions.join("\n") };
+        return updated;
+      });
+      if (d.ameliorations?.length) setAmeliorations(d.ameliorations.join("\n"));
+      if (d.activitesPrivilegiees?.length) setActivites(d.activitesPrivilegiees);
+      if (d.gestionEnergie) setGestionEnergie(d.gestionEnergie);
+      if (d.comportementTravail) setComportementTravail(d.comportementTravail);
+      if (d.priseDecision) setPriseDecision(d.priseDecision);
+      if (d.priseDecisionDesc) setPriseDecisionDesc(d.priseDecisionDesc);
+      if (d.styleApprentissage) setStyleApprentissage(d.styleApprentissage);
+      if (d.styleApprentissageDesc) setStyleApprentissageDesc(d.styleApprentissageDesc);
+      if (d.tachesConfier?.length) setTachesConfier(d.tachesConfier.join("\n"));
+      if (d.tachesEviter?.length) setTachesEviter(d.tachesEviter.join("\n"));
+      if (d.objectifsAdherer?.length) setObjectifsAdherer(d.objectifsAdherer.join("\n"));
+      if (d.objectifsEchouer?.length) setObjectifsEchouer(d.objectifsEchouer.join("\n"));
+      if (d.managementAttendu?.length) setManagementAttendu(d.managementAttendu.join("\n"));
+      if (d.managementEviter?.length) setManagementEviter(d.managementEviter.join("\n"));
+      if (d.reconnaissanceMeilleure?.length) setReconnaissanceMeilleure(d.reconnaissanceMeilleure.join("\n"));
+      if (d.reconnaissanceMoinsSensible?.length) setReconnaissanceMoinsSensible(d.reconnaissanceMoinsSensible.join("\n"));
+
+      const tokens = result.usage?.total_tokens || 0;
+      setAfMessage(`AssessFirst analysé (${tokens} tokens). Onglets Personnalité et Management remplis.`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erreur inconnue";
+      setAfMessage(`Erreur : ${msg}`);
+    } finally {
+      setAnalyzingAF(false);
+    }
+  };
 
   const handleAnalyzeTranscript = async () => {
     if (!transcript.trim()) return;
@@ -219,7 +300,9 @@ export default function SynthesePage() {
         gestionEnergie,
         comportementTravail,
         priseDecision,
+        priseDecisionDesc,
         styleApprentissage,
+        styleApprentissageDesc,
         compatibiliteManageriale: {
           tachesConfier: splitLines(tachesConfier),
           tachesEviter: splitLines(tachesEviter),
@@ -334,9 +417,9 @@ export default function SynthesePage() {
         </div>
 
         <div className="bg-white rounded-2xl p-8" style={{ boxShadow: "var(--shadow-card)" }}>
-          {/* Tab 0: IA Transcription */}
+          {/* Tab 0: IA */}
           {activeTab === 0 && (
-            <div className="space-y-5">
+            <div className="space-y-8">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-xl bg-[#034B5C] text-[#B5E467] flex items-center justify-center">
                   {stepIcons.sparkles}
@@ -346,53 +429,151 @@ export default function SynthesePage() {
                     Analyse automatique par <span className="text-[#034B5C]">IA</span>
                   </h2>
                   <p className="text-sm text-gray-400">
-                    Collez la transcription d'entretien, l'IA remplit tout.
+                    Importez les rapports AssessFirst et/ou la transcription d'entretien.
                   </p>
                 </div>
               </div>
 
-              <div>
-                <label className={labelClass}>Transcription de l'entretien</label>
-                <textarea
-                  className={`${textareaClass} min-h-[280px] font-mono text-xs`}
-                  rows={15}
-                  value={transcript}
-                  onChange={(e) => setTranscript(e.target.value)}
-                  placeholder="Collez ici la transcription complete de l'entretien...&#10;&#10;Exemple :&#10;00:00:04 Arnaud : Bonjour, on demarre l'entretien...&#10;00:00:10 Candidat : Bonjour, je suis..."
-                />
-              </div>
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={handleAnalyzeTranscript}
-                  disabled={analyzing || transcript.trim().length < 50}
-                  className="bg-[#B5E467] text-[#081F34] px-7 py-3 rounded-full font-bold text-sm hover:shadow-lg hover:shadow-[#B5E467]/30 transition-all disabled:opacity-40 flex items-center gap-2"
-                >
-                  {analyzing ? (
-                    <>
-                      <span className="animate-spin inline-block w-4 h-4 border-2 border-[#081F34] border-t-transparent rounded-full" />
-                      Analyse en cours... (30-60s)
-                    </>
-                  ) : (
-                    <>
-                      {stepIcons.sparkles}
-                      Analyser avec l'IA
-                    </>
-                  )}
-                </button>
-                <span className="text-xs text-gray-400">
-                  {transcript.length > 0 ? `${transcript.length} caracteres` : ""}
-                </span>
-              </div>
-              {aiMessage && (
-                <div className={`p-4 rounded-xl text-sm font-medium ${
-                  aiMessage.startsWith("Erreur") ? "bg-red-50 text-red-600 border border-red-100" : "bg-[#e8f5d0] text-[#3d6b0f] border border-[#B5E467]/30"
-                }`}>
-                  {aiMessage}
+              {/* Section AssessFirst */}
+              <div className="border border-[#e8e2d8] rounded-2xl p-6 bg-[#faf8f5] space-y-5">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-[#081F34] text-[#B5E467] flex items-center justify-center text-xs font-bold">AF</div>
+                  <div>
+                    <h3 className="font-bold text-[#081F34]">Rapports AssessFirst</h3>
+                    <p className="text-xs text-gray-400">Rempli automatiquement les onglets Personnalité et Management</p>
+                  </div>
                 </div>
-              )}
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  {([
+                    { key: "swipe", label: "SWIPE résumé", hint: "Style perso, points forts, axes amélioration" },
+                    { key: "drive", label: "DRIVE résumé", hint: "Activités privilégiées, gestion énergie" },
+                    { key: "brain", label: "BRAIN résumé", hint: "Comportement travail, prise de décision" },
+                    { key: "compatibilite", label: "Compatibilité managériale", hint: "Tâches, objectifs, management, reconnaissance" },
+                  ] as { key: keyof AssessFirstFiles; label: string; hint: string }[]).map(({ key, label, hint }) => (
+                    <label key={key} className={`flex flex-col gap-1.5 cursor-pointer border-2 rounded-xl p-3 transition-all ${
+                      afFiles[key] ? "border-[#B5E467] bg-[#e8f5d0]" : "border-dashed border-[#d5cec0] hover:border-[#034B5C]"
+                    }`}>
+                      <span className="text-xs font-bold text-[#081F34]">{label}</span>
+                      <span className="text-[10px] text-gray-400">{hint}</span>
+                      {afFiles[key] ? (
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-xs text-[#3d6b0f] font-medium truncate max-w-[160px]">{afFiles[key]!.name}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); setAfFiles((prev) => ({ ...prev, [key]: null })); }}
+                            className="text-gray-400 hover:text-red-500 ml-2 shrink-0"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 mt-1 text-[#034B5C]">
+                          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" /></svg>
+                          <span className="text-xs font-medium">Choisir le PDF</span>
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          setAfFiles((prev) => ({ ...prev, [key]: file }));
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={handleAnalyzeAssessFirst}
+                    disabled={analyzingAF || !Object.values(afFiles).some(Boolean)}
+                    className="bg-[#081F34] text-white px-7 py-3 rounded-full font-bold text-sm hover:bg-[#034B5C] transition-all disabled:opacity-40 flex items-center gap-2"
+                  >
+                    {analyzingAF ? (
+                      <>
+                        <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                        Analyse AssessFirst... (15-30s)
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z" /></svg>
+                        Analyser les rapports AssessFirst
+                      </>
+                    )}
+                  </button>
+                  <span className="text-xs text-gray-400">
+                    {Object.values(afFiles).filter(Boolean).length} / 4 fichiers
+                  </span>
+                </div>
+
+                {afMessage && (
+                  <div className={`p-4 rounded-xl text-sm font-medium ${
+                    afMessage.startsWith("Erreur") ? "bg-red-50 text-red-600 border border-red-100" : "bg-[#e8f5d0] text-[#3d6b0f] border border-[#B5E467]/30"
+                  }`}>
+                    {afMessage}
+                  </div>
+                )}
+              </div>
+
+              {/* Section Transcription */}
+              <div className="border border-[#e8e2d8] rounded-2xl p-6 bg-[#faf8f5] space-y-5">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-[#034B5C] text-[#B5E467] flex items-center justify-center">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" /></svg>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-[#081F34]">Transcription d'entretien</h3>
+                    <p className="text-xs text-gray-400">Rempli automatiquement Identité, Motivations et Parcours</p>
+                  </div>
+                </div>
+
+                <div>
+                  <textarea
+                    className={`${textareaClass} min-h-[200px] font-mono text-xs`}
+                    rows={10}
+                    value={transcript}
+                    onChange={(e) => setTranscript(e.target.value)}
+                    placeholder="Collez ici la transcription complete de l'entretien...&#10;&#10;Exemple :&#10;00:00:04 Arnaud : Bonjour, on demarre l'entretien...&#10;00:00:10 Candidat : Bonjour, je suis..."
+                  />
+                </div>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={handleAnalyzeTranscript}
+                    disabled={analyzing || transcript.trim().length < 50}
+                    className="bg-[#B5E467] text-[#081F34] px-7 py-3 rounded-full font-bold text-sm hover:shadow-lg hover:shadow-[#B5E467]/30 transition-all disabled:opacity-40 flex items-center gap-2"
+                  >
+                    {analyzing ? (
+                      <>
+                        <span className="animate-spin inline-block w-4 h-4 border-2 border-[#081F34] border-t-transparent rounded-full" />
+                        Analyse en cours... (30-60s)
+                      </>
+                    ) : (
+                      <>
+                        {stepIcons.sparkles}
+                        Analyser la transcription
+                      </>
+                    )}
+                  </button>
+                  <span className="text-xs text-gray-400">
+                    {transcript.length > 0 ? `${transcript.length} caracteres` : ""}
+                  </span>
+                </div>
+                {aiMessage && (
+                  <div className={`p-4 rounded-xl text-sm font-medium ${
+                    aiMessage.startsWith("Erreur") ? "bg-red-50 text-red-600 border border-red-100" : "bg-[#e8f5d0] text-[#3d6b0f] border border-[#B5E467]/30"
+                  }`}>
+                    {aiMessage}
+                  </div>
+                )}
+              </div>
+
               <div className="bg-[#f0ebe3] rounded-xl p-4 text-sm text-[#081F34]/70 flex items-start gap-3">
                 <svg className="w-5 h-5 text-[#034B5C] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg>
-                <span>Vous pouvez aussi remplir les onglets manuellement. Cliquez sur <strong>Suivant</strong> pour passer au formulaire.</span>
+                <span>Vous pouvez utiliser les deux sources ensemble ou remplir les onglets manuellement.</span>
               </div>
             </div>
           )}
@@ -586,13 +767,15 @@ export default function SynthesePage() {
                 <textarea className={textareaClass} rows={3} value={comportementTravail} onChange={(e) => setComportementTravail(e.target.value)} />
               </div>
               <div className="grid md:grid-cols-2 gap-5">
-                <div>
+                <div className="space-y-2">
                   <label className={labelClass}>Prise de decision</label>
-                  <input className={inputClass} value={priseDecision} onChange={(e) => setPriseDecision(e.target.value)} placeholder="Ex: raisonnee" />
+                  <input className={inputClass} value={priseDecision} onChange={(e) => setPriseDecision(e.target.value)} placeholder="Ex: prudente" />
+                  <textarea className={textareaClass} rows={2} value={priseDecisionDesc} onChange={(e) => setPriseDecisionDesc(e.target.value)} placeholder="Description de la prise de decision..." />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <label className={labelClass}>Style d'apprentissage</label>
                   <input className={inputClass} value={styleApprentissage} onChange={(e) => setStyleApprentissage(e.target.value)} placeholder="Ex: Innover" />
+                  <textarea className={textareaClass} rows={2} value={styleApprentissageDesc} onChange={(e) => setStyleApprentissageDesc(e.target.value)} placeholder="Description du style d'apprentissage..." />
                 </div>
               </div>
             </div>
