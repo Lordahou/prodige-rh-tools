@@ -49,7 +49,15 @@ function parseFacturesFile(workbook: XLSX.WorkBook): FactureData[] {
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
   return json.map((row) => {
-    const dateRaw = row["date de facture"] || row["Date de facture"] || row["Date"];
+    // Normalize keys: trim spaces for lookup
+    const get = (key: string) => {
+      if (row[key] !== undefined) return row[key];
+      // Try trimmed match (handles trailing spaces in Tiime exports)
+      const trimmedKey = Object.keys(row).find((k) => k.trim().toLowerCase() === key.trim().toLowerCase());
+      return trimmedKey ? row[trimmedKey] : undefined;
+    };
+
+    const dateRaw = get("date de facture");
     let dateStr = "";
     if (typeof dateRaw === "number") {
       const d = XLSX.SSF.parse_date_code(dateRaw);
@@ -57,17 +65,19 @@ function parseFacturesFile(workbook: XLSX.WorkBook): FactureData[] {
     } else if (dateRaw) {
       dateStr = String(dateRaw);
     }
-    const numRaw = row["numéro de facture"] || row["Numéro de facture"] || "";
+
+    const numRaw = get("numéro de facture");
     const numero = numRaw && !isNaN(Number(numRaw))
       ? `#${Math.round(Number(numRaw))}`
       : "Brouillon";
+
     return {
       date: dateStr,
       numero,
-      statut: String(row["statut de la facture"] || row["Statut de la facture"] || row["statut"] || ""),
-      client: String(row["nom du client"] || row["Nom du client"] || row["Client"] || ""),
-      montantTTC: Number(row["montant TTC"] || row["Montant TTC"] || 0),
-      montantHT: Number(row["montant HT"] || row["Montant HT"] || 0),
+      statut: String(get("statut de la facture") || ""),
+      client: String(get("nom du client") || ""),
+      montantTTC: Number(get("montant TTC") ?? 0),
+      montantHT: Number(get("montant HT") ?? 0),
     };
   }).filter((f) => f.client);
 }
