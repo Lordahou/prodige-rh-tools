@@ -188,6 +188,7 @@ export default function VeillePage() {
   const [articleSujet, setArticleSujet] = useState("");
   const [articleAngle, setArticleAngle] = useState("");
   const [articleMots, setArticleMots] = useState("");
+  const [articleAutoPropose, setArticleAutoPropose] = useState<string | null>(null);
 
   // Load cache on mount
   useEffect(() => {
@@ -235,6 +236,39 @@ export default function VeillePage() {
       setLoading(false);
     }
   };
+
+  // Auto-propose article fields when switching to "article" tab
+  useEffect(() => {
+    if (activeSection !== "article" || !data || articleSujet) return;
+
+    // Prendre la tendance avec l'impact le plus fort
+    const priorityOrder = ["fort", "élevé", "critique", "moyen", "faible"];
+    const topTendance = [...data.tendances_locales].sort(
+      (a, b) => priorityOrder.indexOf(a.impact) - priorityOrder.indexOf(b.impact)
+    )[0];
+
+    if (!topTendance) return;
+
+    // Construire le sujet depuis la tendance
+    const sujetPropose = topTendance.titre;
+
+    // Angle basé sur action_prodige
+    const anglePropose = topTendance.action_prodige
+      ? `Conseils pratiques pour DRH et dirigeants — ${topTendance.action_prodige.slice(0, 80)}`
+      : "Analyse et conseils pratiques pour les employeurs en Mayenne";
+
+    // Mots-clés depuis profils pénuriques + secteurs
+    const kwProfiles = data.profils_penuriques
+      .slice(0, 2)
+      .map((p) => `recrutement ${p.secteur.toLowerCase()}`)
+      .join(", ");
+    const motsClesPropose = `recrutement Laval, cabinet recrutement Mayenne, ${kwProfiles}`;
+
+    setArticleSujet(sujetPropose);
+    setArticleAngle(anglePropose);
+    setArticleMots(motsClesPropose);
+    setArticleAutoPropose(data.date);
+  }, [activeSection, data, articleSujet]);
 
   const handleGenerateArticle = async () => {
     setArticleLoading(true);
@@ -550,9 +584,30 @@ export default function VeillePage() {
                         />
                       </div>
                     </div>
-                    {data && (
+                    {articleAutoPropose && (
+                      <div className="flex items-start gap-2 bg-[#B5E467]/10 border border-[#B5E467]/30 rounded-xl px-3 py-2.5">
+                        <svg className="w-3.5 h-3.5 text-[#3d6b0f] mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+                        </svg>
+                        <div className="flex-1">
+                          <p className="text-xs font-semibold text-[#3d6b0f]">
+                            Proposition automatique — veille du {articleAutoPropose}
+                          </p>
+                          <p className="text-[11px] text-[#3d6b0f]/70 mt-0.5">
+                            Sujet, angle et mots-clés pré-remplis depuis la tendance la plus forte. Modifiez à votre guise.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => { setArticleSujet(""); setArticleAngle(""); setArticleMots(""); setArticleAutoPropose(null); }}
+                          className="text-[#3d6b0f]/50 hover:text-[#3d6b0f] transition-colors text-[10px] flex-shrink-0"
+                        >
+                          Effacer
+                        </button>
+                      </div>
+                    )}
+                    {data && !articleAutoPropose && (
                       <p className="text-xs text-[#034B5C] bg-[#034B5C]/5 rounded-lg px-3 py-2">
-                        ✓ Le contexte de la veille du {data.date} sera automatiquement injecté dans l&apos;article.
+                        ✓ Le contexte de la veille du {data.date} sera injecté dans l&apos;article.
                       </p>
                     )}
                   </div>
