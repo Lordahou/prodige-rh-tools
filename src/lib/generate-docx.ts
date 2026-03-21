@@ -65,7 +65,7 @@ export interface CompatibiliteData {
 }
 
 export async function generateSyntheseDocx(data: CandidateData): Promise<Buffer> {
-  const templatePath = path.join(process.cwd(), "prodige-rh-tools", "public", "modele_template.docx");
+  const templatePath = path.join(process.cwd(), "public", "modele_template.docx");
   const template = fs.readFileSync(templatePath);
 
   const buffer = await createReport({
