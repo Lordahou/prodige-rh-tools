@@ -56,13 +56,32 @@ function useCountUp(target: number, duration = 1000) {
 function SupportModal({ onClose }: { onClose: () => void }) {
   const [sujet, setSujet] = useState("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSend = () => {
-    const to = "houllegatte.arnaud@gmail.com";
-    const subject = encodeURIComponent(sujet || "Demande de support – Prodige RH Tools");
-    const body = encodeURIComponent(message);
-    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
-    onClose();
+  const handleSend = async () => {
+    if (!message.trim()) { setError("Veuillez écrire un message."); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sujet, message }),
+      });
+      if (res.ok) {
+        setSent(true);
+        setTimeout(onClose, 2200);
+      } else {
+        const d = await res.json();
+        setError(d.error || "Erreur lors de l'envoi.");
+      }
+    } catch {
+      setError("Erreur réseau, réessayez.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -114,54 +133,63 @@ function SupportModal({ onClose }: { onClose: () => void }) {
             </button>
           </div>
 
-          <div className="space-y-3">
-            <div>
-              <label className="block text-white/40 text-[10px] font-bold uppercase tracking-widest mb-1.5">
-                Sujet
-              </label>
-              <input
-                type="text"
-                value={sujet}
-                onChange={(e) => setSujet(e.target.value)}
-                placeholder="Ex: Problème sur la génération de synthèse…"
-                className="w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-[#B5E467]/40"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
-              />
+          {sent ? (
+            <div className="flex flex-col items-center justify-center py-6 gap-3">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "rgba(181,228,103,0.15)" }}>
+                <svg className="w-6 h-6 text-[#B5E467]" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+              </div>
+              <p className="text-white font-semibold text-sm">Message envoyé !</p>
+              <p className="text-white/35 text-xs text-center">Arnaud a reçu votre message et reviendra vers vous rapidement.</p>
             </div>
-            <div>
-              <label className="block text-white/40 text-[10px] font-bold uppercase tracking-widest mb-1.5">
-                Message
-              </label>
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                rows={4}
-                placeholder="Décrivez votre demande ou suggestion…"
-                className="w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-[#B5E467]/40 resize-none"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-2.5 mt-5">
-            <button
-              onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white/40 hover:text-white transition-all"
-              style={{ border: "1px solid rgba(255,255,255,0.09)" }}
-            >
-              Annuler
-            </button>
-            <button
-              onClick={handleSend}
-              disabled={!message.trim()}
-              className="flex-1 py-2.5 rounded-xl text-sm btn-lime flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
-              </svg>
-              Envoyer
-            </button>
-          </div>
+          ) : (
+            <>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-white/40 text-[10px] font-bold uppercase tracking-widest mb-1.5">Sujet</label>
+                  <input
+                    type="text"
+                    value={sujet}
+                    onChange={(e) => setSujet(e.target.value)}
+                    placeholder="Ex: Problème sur la génération de synthèse…"
+                    className="w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-[#B5E467]/40"
+                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/40 text-[10px] font-bold uppercase tracking-widest mb-1.5">Message</label>
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    rows={4}
+                    placeholder="Décrivez votre demande ou suggestion…"
+                    className="w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-[#B5E467]/40 resize-none"
+                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
+                  />
+                </div>
+                {error && <p className="text-red-400 text-xs px-1">{error}</p>}
+              </div>
+              <div className="flex gap-2.5 mt-5">
+                <button
+                  onClick={onClose}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white/40 hover:text-white transition-all"
+                  style={{ border: "1px solid rgba(255,255,255,0.09)" }}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleSend}
+                  disabled={loading || !message.trim()}
+                  className="flex-1 py-2.5 rounded-xl text-sm btn-lime flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <><span className="w-3.5 h-3.5 border-2 border-[#081F34]/40 border-t-[#081F34] rounded-full animate-spin inline-block" />Envoi…</>
+                  ) : (
+                    <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" /></svg>Envoyer</>
+                  )}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
