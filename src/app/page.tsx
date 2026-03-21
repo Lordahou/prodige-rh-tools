@@ -613,7 +613,17 @@ export default function Home() {
                   ROI · Temps économisé
                 </p>
                 {totalMinutes === 0 ? (
-                  <p className="text-white/20 text-sm">Utilisez les outils pour calculer votre gain de temps</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-white/20 text-[10px] font-bold uppercase tracking-widest mr-1">Potentiel</span>
+                    <span
+                      className="text-2xl font-bold leading-none"
+                      style={{ fontFamily: "Syne, sans-serif", color: "rgba(181,228,103,0.45)" }}
+                    >
+                      5h10
+                    </span>
+                    <span className="text-white/20 text-sm">/semaine</span>
+                    <span className="text-white/15 text-xs hidden sm:inline">si vous utilisez tous les outils</span>
+                  </div>
                 ) : (
                   <div className="flex items-baseline gap-2">
                     <span
@@ -632,6 +642,27 @@ export default function Home() {
             </div>
 
             {/* Separator */}
+            {totalMinutes === 0 && (
+              <>
+                <div className="hidden sm:block w-px self-stretch" style={{ background: "rgba(255,255,255,0.06)" }} />
+                {/* Potential breakdown */}
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { label: "Veille", minutes: 90 },
+                    { label: "Dashboard", minutes: 60 },
+                    { label: "Synthèse", minutes: 45 },
+                    { label: "Proposition", minutes: 30 },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-center gap-1.5">
+                      <div className="w-1 h-1 rounded-full" style={{ background: "rgba(181,228,103,0.3)" }} />
+                      <span className="text-white/25 text-[11px]">{item.label}</span>
+                      <span className="text-white/15 text-[10px]">{item.minutes} min</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="hidden lg:block text-white/15 text-[10px] italic ml-auto">Votre ROI réel s&apos;affichera dès la première utilisation</p>
+              </>
+            )}
             {totalMinutes > 0 && (
               <>
                 <div className="hidden sm:block w-px self-stretch" style={{ background: "rgba(255,255,255,0.08)" }} />
@@ -674,7 +705,12 @@ export default function Home() {
             )}
           </div>
 
-          {/* Progress bar — fill proportional to totalMinutes (capped at 8h = 480 min) */}
+          {/* Progress bar */}
+          {totalMinutes === 0 && (
+            <div className="mt-4 h-px rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
+              <div className="h-full w-full rounded-full" style={{ background: "repeating-linear-gradient(90deg, rgba(181,228,103,0.12) 0px, rgba(181,228,103,0.12) 6px, transparent 6px, transparent 12px)" }} />
+            </div>
+          )}
           {totalMinutes > 0 && (
             <div
               className="mt-4 h-px rounded-full overflow-hidden"
