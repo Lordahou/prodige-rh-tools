@@ -413,6 +413,13 @@ export default function Home() {
 
           {/* Right */}
           <div className="hidden sm:flex items-center gap-4">
+            <button
+              onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/login"; }}
+              className="text-white/20 text-[11px] hover:text-white/50 transition-colors"
+              title="Se déconnecter"
+            >
+              Déconnexion
+            </button>
             <div className="text-right">
               <p className="text-white/25 text-[11px]">Outils professionnels</p>
               <p className="text-[11px] font-semibold" style={{ color: "#B5E467" }}>
