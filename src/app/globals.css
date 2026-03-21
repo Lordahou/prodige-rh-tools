@@ -221,6 +221,63 @@ body {
   background-size: 36px 36px;
 }
 
+/* ── Featured card (priorité élevée) ────────────── */
+.card-featured {
+  background: rgba(255,255,255,0.055);
+  border-color: rgba(181,228,103,0.14);
+  box-shadow: 0 4px 24px rgba(181,228,103,0.05);
+}
+.card-featured:hover {
+  box-shadow: 0 12px 48px rgba(181,228,103,0.13);
+}
+.card-featured .icon-box {
+  background: rgba(181,228,103,0.14);
+  border-color: rgba(181,228,103,0.28);
+}
+
+/* ── Bouton en cours de génération ───────────────── */
+@keyframes btn-pulse-glow {
+  0%, 100% { box-shadow: 0 0 22px rgba(181,228,103,0.3); }
+  50%       { box-shadow: 0 0 44px rgba(181,228,103,0.65); }
+}
+.btn-lime.btn-loading {
+  animation: btn-pulse-glow 1.6s ease-in-out infinite;
+}
+
+/* ── Reprendre pill ──────────────────────────────── */
+.recent-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  transition: background 0.2s, border-color 0.2s;
+  text-decoration: none;
+}
+.recent-pill:hover {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(181,228,103,0.25);
+}
+
+/* ── Accessibilité : respect du mouvement réduit ─── */
+@media (prefers-reduced-motion: reduce) {
+  .anim-float-a,
+  .anim-float-b,
+  .anim-spin-slow,
+  .anim-spin-rev,
+  .anim-pulse-lime,
+  .anim-fade-up,
+  .anim-fade-in,
+  .anim-slide-down,
+  .btn-lime.btn-loading {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 /* ── Legacy light inputs (sub-pages) ─────────────── */
 input, select, textarea { font-family: inherit; }
 button, a { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }

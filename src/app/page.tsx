@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 /* ── Support Modal ───────────────────────────────── */
 function SupportModal({ onClose }: { onClose: () => void }) {
@@ -126,6 +126,7 @@ const modules = [
     description: "Générez une synthèse de candidature au format Word avec l'IA, fidèle à votre charte.",
     href: "/synthese",
     badge: true,
+    featured: true,
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
@@ -137,6 +138,7 @@ const modules = [
     description: "Importez vos exports Tiime et pilotez votre activité : CA, pipeline, recouvrement, TJM.",
     href: "/dashboard",
     badge: true,
+    featured: true,
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
@@ -181,6 +183,7 @@ const modules = [
     description: "Guide structuré pour vos appels de préqualification — checklist + notes + synthèse IA à chaud.",
     href: "/prequalification",
     badge: true,
+    featured: true,
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
@@ -214,10 +217,40 @@ const modules = [
 const delayClasses = ["d-50", "d-100", "d-150", "d-200", "d-250", "d-300", "d-350", "d-400"];
 
 /* ── Page ────────────────────────────────────────── */
+type RecentModule = { href: string; title: string; ts: number };
+
+function timeAgo(ts: number): string {
+  const diff = Date.now() - ts;
+  const min = Math.floor(diff / 60000);
+  const h = Math.floor(diff / 3600000);
+  const d = Math.floor(diff / 86400000);
+  if (min < 2) return "À l'instant";
+  if (min < 60) return `Il y a ${min} min`;
+  if (h < 24) return `Il y a ${h}h`;
+  return `Il y a ${d}j`;
+}
+
 export default function Home() {
   const [supportOpen, setSupportOpen] = useState(false);
+  const [recent, setRecent] = useState<RecentModule[]>([]);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Bonjour" : hour < 18 ? "Bon après-midi" : "Bonsoir";
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("prodige_recent");
+      if (stored) setRecent(JSON.parse(stored));
+    } catch {}
+  }, []);
+
+  const trackVisit = (href: string, title: string) => {
+    try {
+      const prev: RecentModule[] = JSON.parse(localStorage.getItem("prodige_recent") || "[]");
+      const updated = [{ href, title, ts: Date.now() }, ...prev.filter((r) => r.href !== href)].slice(0, 3);
+      localStorage.setItem("prodige_recent", JSON.stringify(updated));
+      setRecent(updated);
+    } catch {}
+  };
 
   return (
     <main
@@ -351,8 +384,8 @@ export default function Home() {
             {/* Stats row */}
             <div className="flex items-center gap-7">
               {[
-                { value: "7", label: "outils" },
-                { value: "6", label: "avec IA", accent: true },
+                { value: "8", label: "outils" },
+                { value: "7", label: "avec IA", accent: true },
                 { value: "∞", label: "possibilités" },
               ].map((s, i) => (
                 <div
@@ -445,20 +478,53 @@ export default function Home() {
 
       {/* ── Module grid ── */}
       <section className="relative z-10 max-w-7xl mx-auto px-6 pt-12 pb-20">
+        {/* ── Reprendre ── */}
+        {recent.length > 0 && (
+          <div className="mb-10 anim-fade-up">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-4 h-px" style={{ background: "rgba(255,255,255,0.15)" }} />
+              <p className="text-white/20 text-[10px] font-bold uppercase tracking-[0.22em]">Reprendre</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {recent.map((r) => {
+                const mod = modules.find((m) => m.href === r.href);
+                return (
+                  <Link
+                    key={r.href}
+                    href={r.href}
+                    className="recent-pill group"
+                    onClick={() => trackVisit(r.href, r.title)}
+                  >
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: "rgba(181,228,103,0.10)", color: "#B5E467" }}>
+                      {mod?.icon}
+                    </div>
+                    <div>
+                      <p className="text-white text-xs font-semibold leading-tight">{r.title}</p>
+                      <p className="text-white/30 text-[10px] mt-0.5">{timeAgo(r.ts)}</p>
+                    </div>
+                    <svg className="w-3 h-3 text-white/20 ml-1 group-hover:text-[#B5E467] transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                    </svg>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Section label */}
         <div className="flex items-center gap-3 mb-8">
           <div className="w-6 h-px" style={{ background: "#B5E467" }} />
-          <p
-            className="text-white/25 text-[10px] font-bold uppercase tracking-[0.22em]"
-          >
+          <p className="text-white/25 text-[10px] font-bold uppercase tracking-[0.22em]">
             Vos outils
           </p>
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {modules.map((m, i) => (
-            <Link key={m.href} href={m.href} className="group block">
-              <div className={`card-glass rounded-2xl p-6 h-full anim-fade-up ${delayClasses[i]}`}>
+            <Link key={m.href} href={m.href} className="group block" onClick={() => trackVisit(m.href, m.title)}>
+              <div className={`card-glass rounded-2xl p-6 h-full anim-fade-up ${delayClasses[i]} ${"featured" in m && m.featured ? "card-featured" : ""}`}>
                 {/* Top row */}
                 <div className="flex items-start justify-between mb-5">
                   <div className="icon-box">
