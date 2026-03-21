@@ -5,142 +5,137 @@ import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+type ClientRow = {
+  nom?: string;
+  ville?: string;
+  factureeTTC?: number;
+  factureeHT?: number;
+  encaisse?: number;
+  encours?: number;
+  statut?: string;
+};
+
 export async function POST(request: NextRequest) {
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const { mois, annee, ton, message_delphine } = await request.json();
+    const { client, angle } = await request.json();
+    if (!client) return NextResponse.json({ error: "Client requis" }, { status: 400 });
 
     const now = new Date();
-    const targetYear = annee ?? now.getFullYear();
-    const targetMonth = mois ?? now.getMonth() + 1;
+    const today = now.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
-    const monthNames = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-      "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
-    const moisAnnee = `${monthNames[targetMonth - 1]} ${targetYear}`;
-
-    // ── Fetch dashboard snapshot ──────────────────────────────────────────────
-    const snapshot = await getSnapshot(auth.email, targetYear);
-    let dashboardContext = "Données tableau de bord : non disponibles (importez vos fichiers Tiime).";
-    if (snapshot && Array.isArray(snapshot.clients_json) && snapshot.clients_json.length > 0) {
-      type ClientRow = { nom?: string; ville?: string; factureeTTC?: number; encours?: number; statut?: string };
-      const clients = snapshot.clients_json as ClientRow[];
-      const nbClients = clients.length;
-      const villes = [...new Set(clients.map((c) => c.ville).filter(Boolean))].slice(0, 8);
-      const totalCA = clients.reduce((s, c) => s + (c.factureeTTC ?? 0), 0);
-      const totalEncours = clients.reduce((s, c) => s + (c.encours ?? 0), 0);
-      const nbEnRetard = clients.filter((c) => c.statut?.toLowerCase().includes("retard")).length;
-
-      dashboardContext = `DONNÉES TABLEAU DE BORD (${moisAnnee}) :
-- Nombre d'entreprises clientes actives : ${nbClients}
-- Zones géographiques couvertes : ${villes.join(", ") || "Mayenne"}
-- CA facturé total (exercice) : ${Math.round(totalCA).toLocaleString("fr-FR")} €
-- En-cours de recouvrement : ${Math.round(totalEncours).toLocaleString("fr-FR")} €
-- Clients avec paiement en retard : ${nbEnRetard}
-Note : utilise ces données de façon agrégée et anonymisée dans la newsletter — ne citer aucun nom de client.`;
-    }
-
-    // ── Fetch veille cache ────────────────────────────────────────────────────
+    // ── Veille cache ──────────────────────────────────────────────────────────
     const veille = await getLatestVeille(auth.email);
-    let veilleContext = "Veille RH : non disponible (générez une veille depuis le module Veille Tendances).";
+    let veilleContext = "";
     if (veille) {
       type VeilleData = {
         resume_executif?: string;
-        tendances_locales?: { titre: string; description: string; impact: string; action_prodige: string }[];
-        marche_emploi?: { mayenne?: string; pays_de_la_loire?: string };
+        tendances_locales?: { titre: string; description: string; action_prodige: string }[];
         profils_penuriques?: { profil: string; secteur: string; conseil?: string }[];
-        chiffres_cles?: { chiffre: string; commentaire: string }[];
+        marche_emploi?: { mayenne?: string };
       };
       const v = veille.rapport_json as VeilleData;
-      const topTendances = (v.tendances_locales ?? []).slice(0, 3);
-      const topProfils = (v.profils_penuriques ?? []).slice(0, 3);
-      const topChiffres = (v.chiffres_cles ?? []).slice(0, 3);
-
-      veilleContext = `VEILLE RH (${veille.created_at ? new Date(veille.created_at).toLocaleDateString("fr-FR") : "récente"}) :
-RÉSUMÉ : ${v.resume_executif ?? ""}
-MARCHÉ EMPLOI MAYENNE : ${v.marche_emploi?.mayenne ?? ""}
-MARCHÉ PAYS DE LA LOIRE : ${v.marche_emploi?.pays_de_la_loire ?? ""}
-TENDANCES LOCALES :
-${topTendances.map((t) => `- [Impact ${t.impact}] ${t.titre} : ${t.description} → ${t.action_prodige}`).join("\n")}
-PROFILS EN TENSION :
-${topProfils.map((p) => `- ${p.profil} (${p.secteur}) : ${p.conseil ?? ""}`).join("\n")}
-CHIFFRES CLÉS :
-${topChiffres.map((c) => `- ${c.chiffre} — ${c.commentaire}`).join("\n")}`;
+      const tendances = (v.tendances_locales ?? []).slice(0, 2).map((t) => `• ${t.titre} : ${t.description}`).join("\n");
+      const profils = (v.profils_penuriques ?? []).slice(0, 2).map((p) => `• ${p.profil} (${p.secteur})`).join("\n");
+      veilleContext = `VEILLE RH LOCALE (${new Date(veille.created_at).toLocaleDateString("fr-FR")}) :
+Marché Mayenne : ${v.marche_emploi?.mayenne ?? ""}
+Tendances : \n${tendances}
+Profils en tension : \n${profils}`;
     }
 
-    // ── Build prompt ──────────────────────────────────────────────────────────
-    const tonLabel = ton === "expert" ? "expert et analytique" : ton === "chaleureux" ? "chaleureux et bienveillant" : "informatif et actionnable";
+    // ── Angle label ───────────────────────────────────────────────────────────
+    const angleLabels: Record<string, string> = {
+      insight: "partage d'un insight RH pertinent pour son activité",
+      mission: "proposition d'une nouvelle mission de recrutement",
+      relance: "relance douce et bienveillante sur un encours de paiement",
+      suivi: "prise de nouvelles post-recrutement et fidélisation",
+    };
+    const angleLabel = angleLabels[angle] || angleLabels.insight;
 
-    const prompt = `Tu es expert en communication RH pour Prodige RH, cabinet de recrutement "Positiv' Recrutement" à Laval (53), Mayenne. Auteure : Delphine Pilorge (gérante).
+    // ── Build situation financière ────────────────────────────────────────────
+    const encours = Number(client.encours ?? 0);
+    const encaisse = Number(client.encaisse ?? 0);
+    const factureeTTC = Number(client.factureeTTC ?? 0);
+    const tauxEncaissement = factureeTTC > 0 ? Math.round((encaisse / factureeTTC) * 100) : 0;
+    const statut = String(client.statut ?? "");
+    const enRetard = statut.toLowerCase().includes("retard");
 
-Tu génères la Newsletter RH mensuelle de Prodige RH, envoyée aux DRH, dirigeants et managers de PME/ETI de Mayenne et Pays de la Loire.
+    const situationFinanciere = factureeTTC > 0
+      ? `CA facturé : ${Math.round(factureeTTC).toLocaleString("fr-FR")} € TTC | Encaissé : ${tauxEncaissement}% | Encours : ${Math.round(encours).toLocaleString("fr-FR")} €${enRetard ? " (⚠️ paiement en retard)" : ""}`
+      : "Pas encore de facturation enregistrée";
 
-NEWSLETTER : ${moisAnnee}
-TON ÉDITORIAL : ${tonLabel} · Valeurs Prodige RH : Proximité, Disponibilité, Générosité, Bienveillance
+    const prompt = `Tu es Delphine Pilorge, gérante de Prodige RH, cabinet de recrutement "Positiv' Recrutement" à Laval (53), Mayenne. Tu rédiges un email commercial personnalisé pour un client.
 
-${dashboardContext}
+DATE : ${today}
 
-${veilleContext}
+CLIENT :
+- Nom : ${client.nom}
+- Ville : ${client.ville || "Mayenne"}
+- Situation : ${situationFinanciere}
 
-${message_delphine ? `MESSAGE PERSONNALISÉ DE DELPHINE À INTÉGRER DANS L'ÉDITO : "${message_delphine}"` : ""}
+OBJECTIF DE L'EMAIL : ${angleLabel}
 
-Génère la newsletter complète au format JSON suivant :
+${veilleContext ? `\n${veilleContext}\n` : ""}
 
+INSTRUCTIONS :
+- Ton chaleureux, professionnel, proximité — voix de Delphine (1ère personne)
+- 150-200 mots maximum (email court et impactant)
+- Personnalisé au maximum pour ${client.nom}
+- Mentionne 1 élément de veille RH pertinent pour leur contexte si disponible
+- Termine par une invitation à échanger (appel, RDV, réponse)
+- Signe "Delphine Pilorge — Prodige RH · Laval (53) · prodige-rh.fr"
+${angle === "relance" && enRetard ? "- Pour la relance : ton bienveillant, jamais agressif, rappel naturel de la situation" : ""}
+${angle === "relance" && !enRetard && encours > 0 ? `- Mention naturelle de l'encours de ${Math.round(encours).toLocaleString("fr-FR")} €` : ""}
+
+Réponds UNIQUEMENT avec ce JSON :
 {
-  "sujet": "Objet email accrocheur, 50-60 car, avec le mois et une promesse concrète",
-  "preheader": "Texte de prévisualisation email, 85-100 car, complète le sujet",
-  "mois_annee": "${moisAnnee}",
-  "edito": "Mot de Delphine — 100-130 mots, ton personnel, chaleureux, ancré dans l'actualité locale du mois. Mentionne 1-2 faits concrets de la veille. Signe 'Delphine Pilorge, Prodige RH'.",
-  "marche_local": {
-    "titre": "Titre accrocheur H2 sur le marché emploi local",
-    "contenu": "80-100 mots sur le marché emploi Mayenne/Pays de la Loire ce mois-ci. Chiffres concrets si dispo. Ton expert."
-  },
-  "tendance_cle": {
-    "titre": "Titre H2 : LA tendance RH du mois pour les DRH locaux",
-    "contenu": "80-100 mots. Contexte + implications pour les recruteurs locaux.",
-    "action_drh": "1 conseil pratique actionnable (1-2 phrases max) pour les DRH clients"
-  },
-  "profils_en_tension": [
-    {
-      "profil": "Intitulé du profil",
-      "secteur": "Secteur",
-      "conseil": "1 phrase courte : pourquoi c'est difficile et quoi faire"
-    }
-  ],
-  "activite_prodige": {
-    "accroche": "Phrase d'intro type 'Ce mois-ci, Prodige RH accompagne...' basée sur les données dashboard (agrégées, anonymisées). 1-2 phrases.",
-    "point_fort": "1 fait marquant ou anecdote positive (inventé si pas de données) sur l'activité cabinet ce mois-ci"
-  },
-  "conseil_rh": {
-    "titre": "Titre H2 : Le conseil RH du mois pour mieux recruter",
-    "contenu": "80-100 mots. Conseil pratique, actionnable, lié aux tendances du mois.",
-    "cta": "1-2 phrases d'appel à l'action vers Prodige RH : contact, échange, mission"
-  }
-}
-
-RÈGLES :
-- 2-3 profils en tension max
-- Ancrage local fort : Mayenne, Laval, Sarthe, Pays de la Loire
-- Ne jamais citer de nom de client
-- Réponds UNIQUEMENT avec le JSON valide`;
+  "sujet": "Objet email (40-55 car, personnalisé avec le nom client si naturel)",
+  "corps": "Corps de l'email complet, prêt à envoyer"
+}`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.55,
-      max_tokens: 2000,
+      temperature: 0.6,
+      max_tokens: 600,
       response_format: { type: "json_object" },
     });
 
     const content = completion.choices[0]?.message?.content;
     if (!content) throw new Error("Réponse vide");
 
-    void logDocument(auth.email, "newsletter-rh", moisAnnee, completion.usage?.total_tokens);
+    void logDocument(auth.email, "newsletter-client", client.nom, completion.usage?.total_tokens);
     return NextResponse.json({
       data: JSON.parse(content),
-      sources: { hasSnapshot: !!snapshot, hasVeille: !!veille },
       usage: { total_tokens: completion.usage?.total_tokens },
+    });
+  } catch (err) {
+    return NextResponse.json({ error: safeErrorMessage(err) }, { status: 500 });
+  }
+}
+
+// ── GET : retourne le top clients depuis le snapshot ──────────────────────────
+export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth instanceof NextResponse) return auth;
+
+  try {
+    const year = new Date().getFullYear();
+    const snapshot = await getSnapshot(auth.email, year);
+    if (!snapshot || !Array.isArray(snapshot.clients_json) || snapshot.clients_json.length === 0) {
+      return NextResponse.json({ clients: [], snapshot_date: null });
+    }
+
+    const clients = (snapshot.clients_json as ClientRow[])
+      .filter((c) => c.nom)
+      .sort((a, b) => (b.factureeTTC ?? 0) - (a.factureeTTC ?? 0))
+      .slice(0, 10);
+
+    return NextResponse.json({
+      clients,
+      snapshot_date: snapshot.updated_at,
     });
   } catch (err) {
     return NextResponse.json({ error: safeErrorMessage(err) }, { status: 500 });
