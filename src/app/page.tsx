@@ -1,6 +1,86 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+
+function SupportModal({ onClose }: { onClose: () => void }) {
+  const [sujet, setSujet] = useState("");
+  const [message, setMessage] = useState("");
+
+  const handleSend = () => {
+    const to = "houllegatte.arnaud@gmail.com";
+    const subject = encodeURIComponent(sujet || "Demande de support – Prodige RH Tools");
+    const body = encodeURIComponent(message);
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-[#081F34]/60 backdrop-blur-sm" />
+      <div
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 z-10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-5">
+          <img src="/arnaud.png" alt="Arnaud" className="w-10 h-10 rounded-full object-cover border-2 border-[#B5E467]" />
+          <div>
+            <h2 className="font-bold text-[#081F34] text-base">Contacter Arnaud</h2>
+            <p className="text-xs text-gray-400">Support & suggestions sur l'outil</p>
+          </div>
+          <button onClick={onClose} className="ml-auto text-gray-400 hover:text-[#081F34] transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-[#081F34] mb-1.5 uppercase tracking-wide">Sujet</label>
+            <input
+              type="text"
+              value={sujet}
+              onChange={(e) => setSujet(e.target.value)}
+              placeholder="Ex: Problème sur la génération de synthèse..."
+              className="w-full border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm text-[#081F34] focus:outline-none focus:ring-2 focus:ring-[#B5E467] placeholder:text-gray-300"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-[#081F34] mb-1.5 uppercase tracking-wide">Message</label>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={4}
+              placeholder="Décrivez votre demande ou suggestion..."
+              className="w-full border border-[#e8e2d8] rounded-xl px-4 py-2.5 text-sm text-[#081F34] focus:outline-none focus:ring-2 focus:ring-[#B5E467] placeholder:text-gray-300 resize-none"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-5">
+          <button
+            onClick={onClose}
+            className="flex-1 border border-[#e8e2d8] text-[#081F34] px-4 py-2.5 rounded-full text-sm font-bold hover:bg-[#f0ebe3] transition-all"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={!message.trim()}
+            className="flex-1 bg-[#081F34] text-white px-4 py-2.5 rounded-full text-sm font-bold hover:bg-[#034B5C] transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+            </svg>
+            Envoyer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const modules = [
   {
@@ -53,6 +133,7 @@ const modules = [
 ];
 
 export default function Home() {
+  const [supportOpen, setSupportOpen] = useState(false);
   const now = new Date();
   const hour = now.getHours();
   const greeting = hour < 12 ? "Bonjour" : hour < 18 ? "Bon apres-midi" : "Bonsoir";
@@ -72,12 +153,19 @@ export default function Home() {
               <p className="text-sm text-gray-400">Outils professionnels</p>
               <p className="text-xs text-gray-300">by Arnaud</p>
             </div>
-            <img
-              src="/arnaud.png"
-              alt="Arnaud"
-              className="w-9 h-9 rounded-full object-cover border-2 border-[#B5E467]"
-            />
+            <button
+              onClick={() => setSupportOpen(true)}
+              title="Contacter Arnaud – Support"
+              className="focus:outline-none group"
+            >
+              <img
+                src="/arnaud.png"
+                alt="Arnaud"
+                className="w-9 h-9 rounded-full object-cover border-2 border-[#B5E467] group-hover:border-white group-hover:scale-110 transition-all cursor-pointer"
+              />
+            </button>
           </div>
+          {supportOpen && <SupportModal onClose={() => setSupportOpen(false)} />}
         </div>
       </header>
 
