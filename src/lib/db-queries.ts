@@ -210,8 +210,6 @@ export async function getHistorique(
 
 // ─── Veille cache ─────────────────────────────────────────────────────────────
 
-const VEILLE_TTL_DAYS = 7;
-
 export async function getLatestVeille(
   email: string
 ): Promise<VeilleRapport | null> {
@@ -225,10 +223,6 @@ export async function getLatestVeille(
   `;
   if (rows.length === 0) return null;
   const r = rows[0];
-  const age =
-    (Date.now() - new Date(String(r.created_at)).getTime()) /
-    (1000 * 60 * 60 * 24);
-  if (age > VEILLE_TTL_DAYS) return null; // expired
   return {
     rapport_json: r.rapport_json,
     annotations: r.annotations as unknown[],

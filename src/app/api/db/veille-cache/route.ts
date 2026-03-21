@@ -8,9 +8,14 @@ export async function GET(request: NextRequest) {
 
   try {
     const rapport = await getLatestVeille(auth.email);
-    return NextResponse.json({ rapport });
+    if (!rapport) return NextResponse.json({ data: null });
+    return NextResponse.json({
+      data: rapport.rapport_json,
+      created_at: rapport.created_at,
+      focus: rapport.focus,
+    });
   } catch {
-    return NextResponse.json({ rapport: null });
+    return NextResponse.json({ data: null });
   }
 }
 
