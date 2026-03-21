@@ -66,9 +66,16 @@ export default function Home() {
             alt="Prodige RH"
             className="h-10"
           />
-          <div className="hidden sm:flex flex-col items-end">
-            <p className="text-sm text-gray-400">Outils professionnels</p>
-            <p className="text-xs text-gray-300">by Arnaud</p>
+          <div className="hidden sm:flex items-center gap-3">
+            <div className="flex flex-col items-end">
+              <p className="text-sm text-gray-400">Outils professionnels</p>
+              <p className="text-xs text-gray-300">by Arnaud</p>
+            </div>
+            <img
+              src="/arnaud.png"
+              alt="Arnaud"
+              className="w-9 h-9 rounded-full object-cover border-2 border-[#B5E467]"
+            />
           </div>
         </div>
       </header>
