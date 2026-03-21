@@ -299,7 +299,7 @@ export default function Home() {
   const greeting = hour < 12 ? "Bonjour" : hour < 18 ? "Bon après-midi" : "Bonsoir";
 
   const userPhoto = userName === "Clémence" ? "/clemence.jpg" : "/delphine.jpg";
-  const userTitle = userName === "Clémence" ? "Chargée de recrutement" : "Gérante · Prodige RH";
+  const userTitle = userName === "Clémence" ? "Chargée de communication" : "Gérante · Prodige RH";
 
   useEffect(() => {
     try {
