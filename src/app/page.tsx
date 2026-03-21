@@ -289,12 +289,21 @@ function timeAgo(ts: number): string {
   return `Il y a ${d}j`;
 }
 
+interface OpenAIUsage {
+  cost_eur: number;
+  cost_usd: number;
+  total_tokens: number;
+  period: string;
+  fromCache?: boolean;
+}
+
 export default function Home() {
   const [supportOpen, setSupportOpen] = useState(false);
   const [recent, setRecent] = useState<RecentModule[]>([]);
   const [onboardingAlerts, setOnboardingAlerts] = useState(0);
   const [stats, setStats] = useState<Record<string, number>>({});
   const [userName, setUserName] = useState("Delphine");
+  const [openaiUsage, setOpenaiUsage] = useState<OpenAIUsage | null>(null);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Bonjour" : hour < 18 ? "Bon après-midi" : "Bonsoir";
 
@@ -313,6 +322,12 @@ export default function Home() {
     // Lire le cookie utilisateur
     const match = document.cookie.match(/prodige_user=([^;]+)/);
     if (match) setUserName(decodeURIComponent(match[1]));
+    // Charger l'usage OpenAI
+    fetch("/api/openai-usage")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d && !d.error) setOpenaiUsage(d); })
+      .catch(() => {});
+
     try {
       const raw = localStorage.getItem("prodige_onboarding");
       if (raw) {
@@ -742,6 +757,87 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      {/* ── OpenAI Usage strip ── */}
+      {openaiUsage && (
+        <section className="relative z-10 max-w-7xl mx-auto px-6 pb-4">
+          <div
+            className="flex flex-wrap items-center gap-4 px-5 py-3 rounded-xl anim-fade-up d-400"
+            style={{
+              background: "rgba(255,255,255,0.025)",
+              border: "1px solid rgba(255,255,255,0.05)",
+            }}
+          >
+            {/* Icon */}
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(255,255,255,0.04)", color: "rgba(181,228,103,0.6)" }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+              </svg>
+            </div>
+
+            {/* Label */}
+            <p className="text-white/25 text-[10px] font-bold uppercase tracking-[0.18em] flex-shrink-0">
+              API OpenAI · ce mois
+            </p>
+
+            <div className="w-px h-4 bg-white/[0.06] flex-shrink-0 hidden sm:block" />
+
+            {/* Cost */}
+            <div className="flex items-baseline gap-1.5">
+              <span
+                className="text-base font-bold leading-none"
+                style={{ fontFamily: "Syne, sans-serif", color: "white" }}
+              >
+                {openaiUsage.cost_eur.toFixed(2)} €
+              </span>
+              <span className="text-white/20 text-[10px]">
+                ({openaiUsage.cost_usd.toFixed(2)} $)
+              </span>
+            </div>
+
+            {openaiUsage.total_tokens > 0 && (
+              <>
+                <div className="w-px h-4 bg-white/[0.06] flex-shrink-0 hidden sm:block" />
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-sm font-semibold text-white/50">
+                    {openaiUsage.total_tokens.toLocaleString("fr-FR")}
+                  </span>
+                  <span className="text-white/20 text-[10px]">tokens</span>
+                </div>
+              </>
+            )}
+
+            <div className="w-px h-4 bg-white/[0.06] flex-shrink-0 hidden sm:block" />
+
+            {/* Period */}
+            <p className="text-white/15 text-[10px]">{openaiUsage.period}</p>
+
+            {/* Budget indicator — budget $20/mois */}
+            <div className="ml-auto hidden md:flex items-center gap-2">
+              <div className="h-1 w-24 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${Math.min(100, (openaiUsage.cost_usd / 20) * 100)}%`,
+                    background: openaiUsage.cost_usd > 16
+                      ? "linear-gradient(90deg, rgba(239,68,68,0.5), rgba(239,68,68,0.8))"
+                      : openaiUsage.cost_usd > 10
+                        ? "linear-gradient(90deg, rgba(251,146,60,0.5), rgba(251,146,60,0.8))"
+                        : "linear-gradient(90deg, rgba(181,228,103,0.4), rgba(181,228,103,0.6))",
+                    transition: "width 0.8s ease",
+                  }}
+                />
+              </div>
+              <p className="text-white/15 text-[10px]">
+                {((openaiUsage.cost_usd / 20) * 100).toFixed(0)}% du budget
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Module grid ── */}
       <section className="relative z-10 max-w-7xl mx-auto px-6 pt-12 pb-20">

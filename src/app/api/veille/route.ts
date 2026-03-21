@@ -12,8 +12,19 @@ export async function POST(request: NextRequest) {
   try {
     const { focus } = await request.json();
 
-    const today = new Date().toLocaleDateString("fr-FR", {
+    const now = new Date();
+
+    const today = now.toLocaleDateString("fr-FR", {
       weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    // Date limite : sources publiées dans les 30 derniers jours uniquement
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const dateLimit = thirtyDaysAgo.toLocaleDateString("fr-FR", {
       day: "numeric",
       month: "long",
       year: "numeric",
@@ -23,13 +34,7 @@ export async function POST(request: NextRequest) {
       ? `\n\nFocus supplementaire demande : "${focus}". Integre ce sujet dans ta veille.`
       : "";
 
-    const prompt = `Tu es un expert RH et recrutement specialise sur Laval (53), la Mayenne et les Pays de la Loire. Tu travailles pour Prodige RH, cabinet de recrutement base a Laval.
-
-Nous sommes le ${today}. Effectue une recherche web pour trouver des informations RECENTES et ACTUELLES sur le marche de l'emploi en France, en Pays de la Loire et en Mayenne.
-
-Genere un rapport JSON avec cette structure exacte. Inclus OBLIGATOIREMENT des URLs de sources verifiables pour chaque element important :
-
-{
+    const structureJson = `{
   "date": "${today}",
   "resume_executif": "3-4 phrases de synthese basee sur des donnees actuelles",
   "tendances_locales": [
@@ -84,7 +89,23 @@ Genere un rapport JSON avec cette structure exacte. Inclus OBLIGATOIREMENT des U
       "commentaire": "Analyse en 1 phrase"
     }
   ]
-}
+}`;
+
+    const prompt = `Tu es un expert RH et recrutement specialise sur Laval (53), la Mayenne et les Pays de la Loire. Tu travailles pour Prodige RH, cabinet de recrutement base a Laval.
+
+Nous sommes le ${today}. Effectue une recherche web pour trouver des informations RECENTES et ACTUELLES sur le marche de l'emploi en France, en Pays de la Loire et en Mayenne.
+
+CONTRAINTE ABSOLUE SUR LA FRAICHEUR DES SOURCES :
+- Toutes les informations doivent etre issues de sources publiees APRES le ${dateLimit}
+- Les sources anterieures au ${dateLimit} sont STRICTEMENT INTERDITES — ne les utilise pas
+- Si une information recente n'est pas disponible, indique clairement "Donnee non disponible pour cette periode" plutot que de citer une source ancienne
+- Verifie la date de publication de chaque source avant de l'inclure dans le rapport
+- Privilege les communiques de presse, articles de presse, donnees INSEE/DARES/France Travail publiees ce mois-ci ou le mois precedent
+- Pour les evolutions reglementaires, tu peux citer les textes de loi officiels mais uniquement si leur application ou discussion est RECENTE (< 30 jours)
+
+Genere un rapport JSON avec cette structure exacte. Inclus OBLIGATOIREMENT des URLs de sources verifiables et RECENTES (publiees apres le ${dateLimit}) pour chaque element important :
+
+${structureJson}
 
 Regles :
 - EXACTEMENT 3 tendances locales (pas plus)
@@ -93,7 +114,7 @@ Regles :
 - EXACTEMENT 3 idees LinkedIn (pas plus)
 - EXACTEMENT 3 chiffres cles (pas plus)
 - Descriptions courtes : 2 phrases maximum par champ
-- URLs REELLES issues de ta recherche web (Pole Emploi, INSEE, DARES, Laval Mayenne Tech, prefecture, presse locale...)
+- URLs REELLES et RECENTES issues de ta recherche web (France Travail, INSEE, DARES, Laval Mayenne Tech, prefecture, presse locale...)
 - Reponds UNIQUEMENT avec le JSON valide et complet, sans texte avant ou apres${focusInstruction}`;
 
     // gpt-4o-search-preview effectue une vraie recherche web

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ModuleLayout from "@/components/ModuleLayout";
 
 interface TendanceLocale {
@@ -84,16 +84,61 @@ const impactColors: Record<string, string> = {
   moderee: "bg-[#e8e2d8] text-[#081F34]",
 };
 
+// How old a cache is considered "fresh" (7 days in ms)
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function formatCacheAge(createdAt: string): string {
+  const date = new Date(createdAt);
+  const diffMs = Date.now() - date.getTime();
+  const diffH = Math.floor(diffMs / (1000 * 60 * 60));
+  if (diffH < 1) return "il y a moins d'une heure";
+  if (diffH < 24) return `il y a ${diffH}h`;
+  const diffD = Math.floor(diffH / 24);
+  return `il y a ${diffD} jour${diffD > 1 ? "s" : ""}`;
+}
+
+function isCacheFresh(createdAt: string): boolean {
+  return Date.now() - new Date(createdAt).getTime() < CACHE_TTL_MS;
+}
+
 export default function VeillePage() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<VeilleData | null>(null);
   const [error, setError] = useState("");
   const [focus, setFocus] = useState("");
   const [activeSection, setActiveSection] = useState("resume");
+  const [cacheInfo, setCacheInfo] = useState<{ createdAt: string; focus: string | null } | null>(null);
+  const [loadingCache, setLoadingCache] = useState(true);
 
-  const handleGenerate = async () => {
+  // Load cache on mount
+  useEffect(() => {
+    const loadCache = async () => {
+      try {
+        const res = await fetch("/api/db/veille-cache");
+        if (res.ok) {
+          const json = await res.json();
+          if (json.data && json.created_at) {
+            setData(json.data);
+            setCacheInfo({ createdAt: json.created_at, focus: json.focus });
+            setActiveSection("resume");
+          }
+        }
+      } catch {
+        // Cache not available, that's fine
+      } finally {
+        setLoadingCache(false);
+      }
+    };
+    loadCache();
+  }, []);
+
+  const handleGenerate = async (force = false) => {
     setLoading(true);
     setError("");
+    if (force) {
+      setData(null);
+      setCacheInfo(null);
+    }
     try {
       const response = await fetch("/api/veille", {
         method: "POST",
@@ -103,6 +148,7 @@ export default function VeillePage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
       setData(result.data);
+      setCacheInfo(null); // Fresh data, no cache badge
       setActiveSection("resume");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
@@ -121,6 +167,9 @@ export default function VeillePage() {
     { key: "chiffres", label: "Chiffres cles", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" /></svg> },
   ];
 
+  const isFromCache = !!cacheInfo;
+  const cacheIsFresh = cacheInfo ? isCacheFresh(cacheInfo.createdAt) : false;
+
   return (
     <ModuleLayout
       title="Veille Tendances"
@@ -129,8 +178,8 @@ export default function VeillePage() {
       icon="trending"
     >
       <div className="max-w-6xl mx-auto px-6 pt-6 pb-2">
-        <div className="bg-white rounded-2xl p-5 flex flex-col sm:flex-row gap-3" style={{ boxShadow: "0 2px 8px rgba(8,31,52,0.06)" }}>
-          <div className="flex flex-col sm:flex-row gap-3 flex-1">
+        <div className="bg-white rounded-2xl p-5 flex flex-col gap-3" style={{ boxShadow: "0 2px 8px rgba(8,31,52,0.06)" }}>
+          <div className="flex flex-col sm:flex-row gap-3">
             <input
               type="text"
               value={focus}
@@ -139,8 +188,8 @@ export default function VeillePage() {
               className="flex-1 border border-[#e8e2d8] rounded-xl px-4 py-3 text-sm text-[#081F34] placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#B5E467] bg-white"
             />
             <button
-              onClick={handleGenerate}
-              disabled={loading}
+              onClick={() => handleGenerate(false)}
+              disabled={loading || loadingCache}
               className="bg-[#B5E467] text-[#081F34] px-7 py-3 rounded-full font-bold text-sm hover:shadow-lg hover:shadow-[#B5E467]/30 transition-all disabled:opacity-40 flex items-center gap-2 shrink-0"
             >
               {loading ? (
@@ -157,8 +206,43 @@ export default function VeillePage() {
             </button>
           </div>
 
+          {/* Cache status bar */}
+          {!loading && (isFromCache || (!data && loadingCache)) && (
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              {isFromCache && (
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium ${
+                    cacheIsFresh
+                      ? "bg-[#e8f5d0] text-[#3d6b0f]"
+                      : "bg-orange-100 text-orange-700"
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${cacheIsFresh ? "bg-[#3d6b0f]" : "bg-orange-500"}`} />
+                    {cacheIsFresh
+                      ? `Veille en cache — generee ${formatCacheAge(cacheInfo!.createdAt)}`
+                      : `Cache expire — generee ${formatCacheAge(cacheInfo!.createdAt)}`}
+                  </span>
+                  {cacheInfo?.focus && (
+                    <span className="text-xs text-gray-400">Focus : {cacheInfo.focus}</span>
+                  )}
+                </div>
+              )}
+              {isFromCache && (
+                <button
+                  onClick={() => handleGenerate(true)}
+                  disabled={loading}
+                  className="text-xs text-[#034B5C] hover:text-[#081F34] font-medium flex items-center gap-1 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                  </svg>
+                  Forcer une nouvelle veille
+                </button>
+              )}
+            </div>
+          )}
+
           {error && (
-            <div className="mt-3 bg-red-50 border border-red-100 rounded-xl p-3 text-sm text-red-600">
+            <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-sm text-red-600">
               {error}
             </div>
           )}
@@ -191,7 +275,12 @@ export default function VeillePage() {
               <div className="bg-[#034B5C] rounded-2xl p-8 text-white" style={{ boxShadow: "var(--shadow-card)" }}>
                 <h3 className="text-lg font-bold text-[#B5E467] mb-3">Resume executif</h3>
                 <p className="text-white/90 leading-relaxed text-base">{data.resume_executif}</p>
-                <p className="text-white/40 text-xs mt-4">Genere le {data.date}</p>
+                <div className="flex items-center gap-3 mt-4">
+                  <p className="text-white/40 text-xs">Genere le {data.date}</p>
+                  {isFromCache && (
+                    <span className="text-white/30 text-xs">• depuis le cache</span>
+                  )}
+                </div>
               </div>
             )}
 
@@ -306,7 +395,7 @@ export default function VeillePage() {
               </div>
             )}
           </>
-        ) : !loading ? (
+        ) : !loading && !loadingCache ? (
           <div className="bg-white rounded-2xl p-14 text-center" style={{ boxShadow: "var(--shadow-card)" }}>
             <div className="w-20 h-20 rounded-2xl bg-[#034B5C] text-[#B5E467] flex items-center justify-center mx-auto mb-5">
               <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -317,7 +406,7 @@ export default function VeillePage() {
               Generez votre <span className="text-[#034B5C]">veille tendances</span>
             </h2>
             <p className="text-gray-500 mb-6 max-w-lg mx-auto">
-              L'IA analyse le marche du recrutement sur Laval, la Mayenne et les Pays de la Loire. Vous recevrez un rapport complet avec tendances, profils penuriques, reglementation et idees de posts LinkedIn.
+              L&apos;IA analyse le marche du recrutement sur Laval, la Mayenne et les Pays de la Loire avec des sources de moins de 30 jours. Vous recevrez un rapport complet avec tendances, profils penuriques, reglementation et idees de posts LinkedIn.
             </p>
             <div className="grid md:grid-cols-3 gap-4 max-w-2xl mx-auto text-left">
               {[
@@ -331,6 +420,10 @@ export default function VeillePage() {
                 </div>
               ))}
             </div>
+          </div>
+        ) : loadingCache ? (
+          <div className="flex items-center justify-center py-20">
+            <span className="animate-spin w-6 h-6 border-2 border-[#034B5C] border-t-transparent rounded-full" />
           </div>
         ) : null}
       </div>
