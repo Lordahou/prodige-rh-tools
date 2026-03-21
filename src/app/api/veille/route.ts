@@ -15,91 +15,108 @@ export async function POST(request: Request) {
     });
 
     const focusInstruction = focus
-      ? `\n\nFocus supplementaire demande par l'utilisateur : "${focus}". Integre ce sujet dans ta veille.`
+      ? `\n\nFocus supplementaire demande : "${focus}". Integre ce sujet dans ta veille.`
       : "";
 
-    const systemPrompt = `Tu es un expert RH et recrutement, specialise sur le bassin d'emploi de Laval (53), le departement de la Mayenne et la region Pays de la Loire. Tu travailles pour Prodige RH, cabinet de recrutement base a Laval, specialise dans le "Positiv' Recrutement" de cadres, dirigeants et managers.
+    const prompt = `Tu es un expert RH et recrutement specialise sur Laval (53), la Mayenne et les Pays de la Loire. Tu travailles pour Prodige RH, cabinet de recrutement base a Laval.
 
-Nous sommes le ${today}.
+Nous sommes le ${today}. Effectue une recherche web pour trouver des informations RECENTES et ACTUELLES sur le marche de l'emploi en France, en Pays de la Loire et en Mayenne.
 
-Genere un rapport de veille tendances complet et actionnable au format JSON avec cette structure exacte :
+Genere un rapport JSON avec cette structure exacte. Inclus OBLIGATOIREMENT des URLs de sources verifiables pour chaque element important :
 
 {
   "date": "${today}",
-  "resume_executif": "3-4 phrases de synthese globale des tendances cles",
+  "resume_executif": "3-4 phrases de synthese basee sur des donnees actuelles",
   "tendances_locales": [
     {
       "titre": "Titre de la tendance",
-      "description": "Description detaillee (3-4 phrases)",
+      "description": "Description detaillee avec chiffres actuels (3-4 phrases)",
       "impact": "fort | moyen | faible",
-      "action_prodige": "Ce que Prodige RH peut faire concretement"
+      "action_prodige": "Ce que Prodige RH peut faire concretement",
+      "source": "Nom de la source",
+      "url": "https://url-de-la-source.fr"
     }
   ],
   "marche_emploi": {
-    "mayenne": "Analyse du marche de l'emploi en Mayenne (3-4 phrases avec chiffres/tendances)",
-    "pays_de_la_loire": "Analyse regionale (3-4 phrases)",
-    "national": "Grandes tendances nationales (3-4 phrases)"
+    "mayenne": "Analyse du marche Mayenne avec chiffres recents",
+    "pays_de_la_loire": "Analyse regionale avec chiffres recents",
+    "national": "Grandes tendances nationales actuelles",
+    "sources": [
+      {"nom": "Nom source", "url": "https://..."}
+    ]
   },
   "profils_penuriques": [
     {
       "profil": "Intitule du profil",
-      "secteur": "Secteur concerne",
+      "secteur": "Secteur",
       "tension": "critique | elevee | moderee",
-      "conseil": "Conseil pour recruter ce profil"
+      "conseil": "Conseil pour recruter ce profil",
+      "source": "Nom source",
+      "url": "https://url-source.fr"
     }
   ],
   "reglementation": [
     {
       "titre": "Evolution reglementaire",
       "description": "Description et impact (2-3 phrases)",
-      "date_effet": "Date d'application si connue",
-      "impact_recrutement": "Impact sur le recrutement"
+      "date_effet": "Date d'application",
+      "impact_recrutement": "Impact sur le recrutement",
+      "url": "https://legifrance.gouv.fr ou autre source officielle"
     }
   ],
   "idees_linkedin": [
     {
       "sujet": "Sujet du post",
-      "angle": "Angle editorial propose",
-      "accroche": "Proposition d'accroche LinkedIn"
+      "angle": "Angle editorial",
+      "accroche": "Accroche LinkedIn"
     }
   ],
   "chiffres_cles": [
     {
       "chiffre": "Le chiffre ou la stat",
-      "source": "Source",
+      "source": "Source precise",
+      "url": "https://url-de-la-source.fr",
       "commentaire": "Analyse en 1 phrase"
     }
   ]
 }
 
 Regles :
-- Genere 4-6 tendances locales
-- Genere 5-8 profils penuriques pertinents pour Laval/Mayenne/Pays de la Loire
-- Genere 2-3 evolutions reglementaires recentes ou a venir
-- Genere 3 idees de posts LinkedIn pour Prodige RH
-- Genere 4-6 chiffres cles
-- Sois factuel, concret et actionnable
-- Ancre tes analyses dans le tissu economique local (agroalimentaire, industrie, services, collectivites, sante)
+- 4-6 tendances locales ancrees dans le tissu economique local (agroalimentaire, industrie, services, collectivites, sante)
+- 5-8 profils penuriques pertinents pour Laval/Mayenne/Pays de la Loire
+- 2-3 evolutions reglementaires recentes
+- 3 idees LinkedIn pour Prodige RH
+- 4-6 chiffres cles avec sources verifiables
+- URLs REELLES issues de ta recherche web (Pole Emploi, INSEE, DARES, Laval Mayenne Tech, prefecture, presse locale...)
 - Reponds UNIQUEMENT avec le JSON, sans texte avant ou apres${focusInstruction}`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      temperature: 0.4,
-      max_tokens: 4000,
-      response_format: { type: "json_object" },
+    // gpt-4o-search-preview effectue une vraie recherche web
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const completion = await (openai.chat.completions.create as any)({
+      model: "gpt-4o-search-preview",
+      web_search_options: {
+        search_context_size: "high",
+      },
       messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: "Genere le rapport de veille tendances pour cette semaine." },
+        { role: "user", content: prompt },
       ],
     });
 
-    const content = completion.choices[0].message.content;
-    if (!content) throw new Error("Reponse vide de l'IA");
+    const rawContent = completion.choices[0].message.content;
+    if (!rawContent) throw new Error("Reponse vide de l'IA");
 
-    const data = JSON.parse(content);
+    // Extraire le JSON de la réponse (le modèle peut ajouter du texte autour)
+    const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("Format JSON non trouve dans la reponse");
+
+    const data = JSON.parse(jsonMatch[0]);
+
+    // Ajouter les annotations (URLs citées par le modèle) si disponibles
+    const annotations = completion.choices[0].message.annotations || [];
 
     return NextResponse.json({
       data,
+      annotations,
       usage: completion.usage,
     });
   } catch (err) {

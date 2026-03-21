@@ -8,6 +8,8 @@ interface TendanceLocale {
   description: string;
   impact: string;
   action_prodige: string;
+  source?: string;
+  url?: string;
 }
 
 interface ProfilPenurique {
@@ -15,6 +17,8 @@ interface ProfilPenurique {
   secteur: string;
   tension: string;
   conseil: string;
+  source?: string;
+  url?: string;
 }
 
 interface Reglementation {
@@ -22,6 +26,7 @@ interface Reglementation {
   description: string;
   date_effet: string;
   impact_recrutement: string;
+  url?: string;
 }
 
 interface IdeeLinkedin {
@@ -33,6 +38,7 @@ interface IdeeLinkedin {
 interface ChiffreCle {
   chiffre: string;
   source: string;
+  url?: string;
   commentaire: string;
 }
 
@@ -44,11 +50,29 @@ interface VeilleData {
     mayenne: string;
     pays_de_la_loire: string;
     national: string;
+    sources?: { nom: string; url: string }[];
   };
   profils_penuriques: ProfilPenurique[];
   reglementation: Reglementation[];
   idees_linkedin: IdeeLinkedin[];
   chiffres_cles: ChiffreCle[];
+}
+
+function SourceLink({ url, label }: { url?: string; label?: string }) {
+  if (!url) return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 text-xs text-[#034B5C] hover:text-[#B5E467] hover:underline transition-colors mt-1"
+    >
+      <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+      </svg>
+      {label || "Vérifier la source"}
+    </a>
+  );
 }
 
 const impactColors: Record<string, string> = {
@@ -207,6 +231,7 @@ export default function VeillePage() {
                       <svg className="w-4 h-4 text-[#3d6b0f] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" /></svg>
                       <span className="text-sm text-[#3d6b0f] font-medium">{t.action_prodige}</span>
                     </div>
+                    <SourceLink url={t.url} label={t.source || "Vérifier la source"} />
                   </div>
                 ))}
               </div>
@@ -241,6 +266,7 @@ export default function VeillePage() {
                     </div>
                     <p className="text-xs text-gray-400 font-medium mb-2">{p.secteur}</p>
                     <p className="text-sm text-gray-600">{p.conseil}</p>
+                    <SourceLink url={p.url} label={p.source || "Vérifier la source"} />
                   </div>
                 ))}
               </div>
@@ -263,6 +289,7 @@ export default function VeillePage() {
                     <div className="bg-[#faf8f5] rounded-xl p-3 border border-[#e8e2d8]">
                       <p className="text-sm text-[#081F34] font-medium">{r.impact_recrutement}</p>
                     </div>
+                    <SourceLink url={r.url} label="Source officielle" />
                   </div>
                 ))}
               </div>
@@ -290,7 +317,10 @@ export default function VeillePage() {
                   <div key={i} className="bg-white rounded-2xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
                     <p className="text-2xl font-extrabold text-[#034B5C] mb-1">{c.chiffre}</p>
                     <p className="text-sm text-gray-600 mb-2">{c.commentaire}</p>
-                    <p className="text-xs text-gray-400 font-medium">Source : {c.source}</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-gray-400 font-medium">Source : {c.source}</p>
+                      <SourceLink url={c.url} label="Vérifier" />
+                    </div>
                   </div>
                 ))}
               </div>
