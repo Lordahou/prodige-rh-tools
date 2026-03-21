@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, safeErrorMessage } from "@/lib/auth-api";
+import { logDocument } from "@/lib/db-queries";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -77,6 +78,7 @@ ${transcript}`;
     const content = completion.choices[0]?.message?.content;
     if (!content) throw new Error("Réponse vide");
 
+    void logDocument(auth.email, "compte-rendu", objet ?? null, completion.usage?.total_tokens);
     return NextResponse.json({
       data: JSON.parse(content),
       usage: { total_tokens: completion.usage?.total_tokens },

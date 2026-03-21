@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import ModuleLayout from "@/components/ModuleLayout";
 import * as XLSX from "xlsx";
 
@@ -102,6 +102,56 @@ export default function DashboardPage() {
   const [aiPlan, setAiPlan] = useState<ActionPlan[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [aiError, setAiError] = useState("");
+  const [snapshotLabel, setSnapshotLabel] = useState("");
+  const prefsLoaded = useRef(false);
+  const snapshotSaving = useRef(false);
+
+  // Load preferences + last snapshot on mount
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const prefsRes = await fetch("/api/db/preferences");
+        if (prefsRes.ok) {
+          const prefs = await prefsRes.json();
+          setObjectifCA(Number(prefs.objectif_ca) || 300000);
+          setJoursProd(Number(prefs.jours_prod) || 120);
+        }
+      } catch { /* offline — use defaults */ }
+      prefsLoaded.current = true;
+
+      try {
+        const year = new Date().getFullYear();
+        const snapRes = await fetch(`/api/db/snapshot?year=${year}`);
+        if (snapRes.ok) {
+          const { snapshot } = await snapRes.json();
+          if (snapshot && Array.isArray(snapshot.clients_json) && snapshot.clients_json.length > 0) {
+            setClients(snapshot.clients_json as ClientData[]);
+            setFactures(snapshot.factures_json as FactureData[]);
+            setObjectifCA(Number(snapshot.objectif_ca) || 300000);
+            setJoursProd(Number(snapshot.jours_prod) || 120);
+            const d = new Date(snapshot.updated_at);
+            setSnapshotLabel(`Données du ${d.toLocaleDateString("fr-FR")}`);
+            setClientsFileName("snapshot");
+            setFacturesFileName("snapshot");
+          }
+        }
+      } catch { /* offline — no snapshot */ }
+    };
+    load();
+  }, []);
+
+  // Auto-save preferences (debounced)
+  useEffect(() => {
+    if (!prefsLoaded.current) return;
+    const t = setTimeout(() => {
+      fetch("/api/db/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ objectif_ca: objectifCA, jours_prod: joursProd }),
+      }).catch(() => {});
+    }, 800);
+    return () => clearTimeout(t);
+  }, [objectifCA, joursProd]);
 
   const handleUpload = (type: "clients" | "factures") => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -113,9 +163,11 @@ export default function DashboardPage() {
         if (type === "clients") {
           setClients(parseClientsFile(wb));
           setClientsFileName(file.name);
+          setSnapshotLabel("");
         } else {
           setFactures(parseFacturesFile(wb));
           setFacturesFileName(file.name);
+          setSnapshotLabel("");
         }
       } catch (err) {
         alert(`Erreur lecture fichier ${type}`);
@@ -125,6 +177,28 @@ export default function DashboardPage() {
     reader.readAsArrayBuffer(file);
     e.target.value = "";
   };
+
+  // Auto-save snapshot when both files are loaded
+  useEffect(() => {
+    if (clients.length === 0 || factures.length === 0) return;
+    if (snapshotSaving.current) return;
+    snapshotSaving.current = true;
+    const year = new Date().getFullYear();
+    fetch("/api/db/snapshot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        exercice_year: year,
+        clients,
+        factures,
+        objectif_ca: objectifCA,
+        jours_prod: joursProd,
+      }),
+    })
+      .then(() => { snapshotSaving.current = false; })
+      .catch(() => { snapshotSaving.current = false; });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clients, factures]);
 
   const kpis = useMemo(() => {
     if (clients.length === 0) return null;
@@ -241,7 +315,15 @@ export default function DashboardPage() {
 
         {/* Config + Import */}
         <div className="bg-white rounded-2xl p-6 mb-6" style={{ boxShadow: "var(--shadow-card)" }}>
-          <h2 className="text-sm font-bold text-[#081F34] uppercase tracking-wider mb-4">Configuration & Import Tiime</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-bold text-[#081F34] uppercase tracking-wider">Configuration & Import Tiime</h2>
+            {snapshotLabel && (
+              <span className="flex items-center gap-1.5 text-xs text-[#3d6b0f] bg-[#e8f5d0] px-3 py-1 rounded-full font-medium">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
+                {snapshotLabel}
+              </span>
+            )}
+          </div>
           <div className="grid md:grid-cols-2 gap-6">
             {/* Config */}
             <div className="space-y-3">

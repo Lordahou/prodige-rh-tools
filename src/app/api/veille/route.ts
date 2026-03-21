@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, safeErrorMessage } from "@/lib/auth-api";
+import { logDocument, saveVeilleRapport } from "@/lib/db-queries";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -120,6 +121,8 @@ Regles :
     // Ajouter les annotations (URLs citées par le modèle) si disponibles
     const annotations = completion.choices[0].message.annotations || [];
 
+    void logDocument(auth.email, "veille", null, completion.usage?.total_tokens);
+    void saveVeilleRapport(auth.email, focus ?? null, data, annotations, completion.usage?.total_tokens);
     return NextResponse.json({
       data,
       annotations,
