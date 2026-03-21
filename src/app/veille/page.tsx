@@ -97,6 +97,28 @@ interface ArticleData {
   };
 }
 
+interface Concurrent {
+  nom: string;
+  type: string;
+  localisation: string;
+  specialites: string[];
+  activite_recente: string;
+  positionnement: string;
+  niveau_menace: "forte" | "moderee" | "faible";
+  url?: string;
+  source_url?: string;
+}
+
+interface VeilleConcurrentielle {
+  date: string;
+  resume: string;
+  concurrents: Concurrent[];
+  opportunites: { titre: string; description: string; action_prodige: string }[];
+  menaces: { titre: string; description: string; reponse_prodige: string }[];
+  avantages_concurrentiels_prodige: string[];
+  recommandations: { priorite: "haute" | "moyenne"; action: string; contexte: string }[];
+}
+
 function CopyButton({ text, label = "Copier" }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = () => {
@@ -182,6 +204,11 @@ export default function VeillePage() {
   const [activeSection, setActiveSection] = useState("resume");
   const [cacheInfo, setCacheInfo] = useState<{ createdAt: string; focus: string | null } | null>(null);
   const [loadingCache, setLoadingCache] = useState(true);
+
+  // Veille concurrentielle state
+  const [concData, setConcData] = useState<VeilleConcurrentielle | null>(null);
+  const [concLoading, setConcLoading] = useState(false);
+  const [concError, setConcError] = useState("");
 
   // Article state
   const [articleData, setArticleData] = useState<ArticleData | null>(null);
@@ -272,6 +299,21 @@ export default function VeillePage() {
     propose();
   }, [activeSection, data, articleSujet]);
 
+  const handleGenerateConcurrentielle = async () => {
+    setConcLoading(true);
+    setConcError("");
+    try {
+      const res = await fetch("/api/veille-concurrentielle", { method: "POST" });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error);
+      setConcData(result.data);
+    } catch (err) {
+      setConcError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setConcLoading(false);
+    }
+  };
+
   const handleGenerateArticle = async () => {
     setArticleLoading(true);
     setArticleError("");
@@ -309,6 +351,7 @@ export default function VeillePage() {
     { key: "linkedin", label: "Idees LinkedIn", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" /></svg> },
     { key: "chiffres", label: "Chiffres cles", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" /></svg> },
     { key: "article", label: "Article web", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg> },
+    { key: "concurrentielle", label: "Concurrentielle", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605" /></svg> },
   ];
 
   const isFromCache = !!cacheInfo;
@@ -827,6 +870,199 @@ export default function VeillePage() {
                       </div>
                     </div>
                   </>
+                )}
+              </div>
+            )}
+            {/* Veille Concurrentielle */}
+            {activeSection === "concurrentielle" && (
+              <div className="space-y-6">
+                {/* Generate button */}
+                <div className="bg-white rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4" style={{ boxShadow: "var(--shadow-card)" }}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#034B5C] flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-[#B5E467]" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605" /></svg>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-[#081F34] text-sm">Veille concurrentielle locale</h3>
+                      <p className="text-xs text-gray-400">Cabinets de recrutement concurrents à Laval, Mayenne, Sarthe et Pays de la Loire</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleGenerateConcurrentielle}
+                    disabled={concLoading}
+                    className="bg-[#B5E467] text-[#081F34] px-6 py-2.5 rounded-full font-bold text-sm hover:shadow-lg hover:shadow-[#B5E467]/30 transition-all disabled:opacity-40 flex items-center gap-2 shrink-0"
+                  >
+                    {concLoading ? (
+                      <><span className="animate-spin w-4 h-4 border-2 border-[#081F34] border-t-transparent rounded-full inline-block" />Analyse... (30-60s)</>
+                    ) : (
+                      <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" /></svg>Analyser la concurrence</>
+                    )}
+                  </button>
+                </div>
+                {concError && (
+                  <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-sm text-red-600">{concError}</div>
+                )}
+
+                {concData && (
+                  <>
+                    {/* Résumé */}
+                    <div className="bg-[#034B5C] rounded-2xl p-6 text-white" style={{ boxShadow: "var(--shadow-card)" }}>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-bold text-[#B5E467] text-sm uppercase tracking-wide">Synthèse concurrentielle</h4>
+                        <span className="text-white/30 text-xs">{concData.date}</span>
+                      </div>
+                      <p className="text-white/90 leading-relaxed">{concData.resume}</p>
+                    </div>
+
+                    {/* Concurrents */}
+                    <div>
+                      <h4 className="font-bold text-[#081F34] text-sm uppercase tracking-wide mb-3 flex items-center gap-2">
+                        <svg className="w-4 h-4 text-[#034B5C]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" /></svg>
+                        Concurrents identifiés ({concData.concurrents.length})
+                      </h4>
+                      <div className="space-y-4">
+                        {concData.concurrents.map((c, i) => {
+                          const menaceColors: Record<string, string> = {
+                            forte: "bg-red-100 text-red-700 border-red-200",
+                            moderee: "bg-orange-100 text-orange-700 border-orange-200",
+                            faible: "bg-[#e8f5d0] text-[#3d6b0f] border-[#B5E467]/30",
+                          };
+                          const menaceLabel: Record<string, string> = {
+                            forte: "Menace forte",
+                            moderee: "Menace modérée",
+                            faible: "Menace faible",
+                          };
+                          return (
+                            <div key={i} className="bg-white rounded-2xl p-6" style={{ boxShadow: "var(--shadow-card)" }}>
+                              <div className="flex items-start justify-between gap-3 mb-3">
+                                <div>
+                                  <h5 className="font-bold text-[#081F34] text-base">{c.nom}</h5>
+                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    <span className="text-xs text-gray-400">{c.type}</span>
+                                    <span className="text-gray-300">·</span>
+                                    <span className="text-xs text-gray-400">{c.localisation}</span>
+                                  </div>
+                                </div>
+                                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold shrink-0 border ${menaceColors[c.niveau_menace] || "bg-gray-100 text-gray-600 border-gray-200"}`}>
+                                  {menaceLabel[c.niveau_menace] || c.niveau_menace}
+                                </span>
+                              </div>
+                              {c.specialites.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                  {c.specialites.map((s, j) => (
+                                    <span key={j} className="text-xs px-2 py-0.5 rounded-full bg-[#034B5C]/8 text-[#034B5C] font-medium" style={{ background: "rgba(3,75,92,0.08)" }}>{s}</span>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="space-y-2">
+                                <div className="bg-[#faf8f5] rounded-xl p-3 border border-[#e8e2d8]">
+                                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Activité récente</p>
+                                  <p className="text-sm text-gray-700">{c.activite_recente}</p>
+                                </div>
+                                <div className="bg-[#034B5C]/5 rounded-xl p-3">
+                                  <p className="text-[10px] font-bold text-[#034B5C]/60 uppercase tracking-wide mb-1">Positionnement vs Prodige RH</p>
+                                  <p className="text-sm text-[#034B5C]">{c.positionnement}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3 mt-3">
+                                {c.url && (
+                                  <a href={c.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-[#034B5C] hover:underline">
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                                    Site web
+                                  </a>
+                                )}
+                                {c.source_url && (
+                                  <a href={c.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600">
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                                    Source
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Opportunités + Menaces */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {/* Opportunités */}
+                      <div className="space-y-3">
+                        <h4 className="font-bold text-[#081F34] text-sm uppercase tracking-wide flex items-center gap-2">
+                          <span className="text-[#3d6b0f]">▲</span> Opportunités ({concData.opportunites.length})
+                        </h4>
+                        {concData.opportunites.map((o, i) => (
+                          <div key={i} className="bg-white rounded-2xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+                            <h5 className="font-bold text-[#081F34] text-sm mb-2">{o.titre}</h5>
+                            <p className="text-sm text-gray-600 mb-3 leading-relaxed">{o.description}</p>
+                            <div className="bg-[#e8f5d0] rounded-xl p-3 flex items-start gap-2">
+                              <svg className="w-3.5 h-3.5 text-[#3d6b0f] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" /></svg>
+                              <span className="text-xs text-[#3d6b0f] font-medium">{o.action_prodige}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Menaces */}
+                      <div className="space-y-3">
+                        <h4 className="font-bold text-[#081F34] text-sm uppercase tracking-wide flex items-center gap-2">
+                          <span className="text-red-500">▼</span> Menaces ({concData.menaces.length})
+                        </h4>
+                        {concData.menaces.map((m, i) => (
+                          <div key={i} className="bg-white rounded-2xl p-5" style={{ boxShadow: "var(--shadow-card)" }}>
+                            <h5 className="font-bold text-[#081F34] text-sm mb-2">{m.titre}</h5>
+                            <p className="text-sm text-gray-600 mb-3 leading-relaxed">{m.description}</p>
+                            <div className="bg-red-50 rounded-xl p-3 flex items-start gap-2">
+                              <svg className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" /></svg>
+                              <span className="text-xs text-red-600 font-medium">{m.reponse_prodige}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Avantages Prodige RH + Recommandations */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {/* Avantages */}
+                      <div className="bg-[#081F34] rounded-2xl p-6 text-white" style={{ boxShadow: "var(--shadow-card)" }}>
+                        <h4 className="font-bold text-[#B5E467] text-sm uppercase tracking-wide mb-4">Avantages concurrentiels Prodige RH</h4>
+                        <ul className="space-y-3">
+                          {concData.avantages_concurrentiels_prodige.map((a, i) => (
+                            <li key={i} className="flex items-start gap-2.5 text-sm text-white/80">
+                              <span className="text-[#B5E467] font-bold flex-shrink-0 mt-0.5">{i + 1}.</span>
+                              {a}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      {/* Recommandations */}
+                      <div className="space-y-3">
+                        <h4 className="font-bold text-[#081F34] text-sm uppercase tracking-wide">Recommandations</h4>
+                        {concData.recommandations.map((r, i) => (
+                          <div key={i} className="bg-white rounded-2xl p-4" style={{ boxShadow: "var(--shadow-card)" }}>
+                            <div className="flex items-start gap-2 mb-2">
+                              <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold shrink-0 ${r.priorite === "haute" ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"}`}>
+                                {r.priorite === "haute" ? "Haute priorité" : "Moyenne priorité"}
+                              </span>
+                            </div>
+                            <p className="font-semibold text-[#081F34] text-sm mb-1">{r.action}</p>
+                            <p className="text-xs text-gray-500 italic">{r.contexte}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {!concData && !concLoading && (
+                  <div className="bg-white rounded-2xl p-12 text-center" style={{ boxShadow: "var(--shadow-card)" }}>
+                    <div className="w-16 h-16 rounded-2xl bg-[#034B5C] text-[#B5E467] flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605" /></svg>
+                    </div>
+                    <h3 className="text-lg font-bold text-[#081F34] mb-2">Analysez vos concurrents locaux</h3>
+                    <p className="text-gray-500 text-sm max-w-md mx-auto">
+                      L&apos;IA recherche en temps réel les cabinets de recrutement actifs à Laval, en Mayenne, Sarthe et Pays de la Loire pour identifier les menaces et opportunités.
+                    </p>
+                  </div>
                 )}
               </div>
             )}
