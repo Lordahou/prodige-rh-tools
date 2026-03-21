@@ -171,13 +171,21 @@ export default function Home() {
 
       {/* Hero section - fond dark teal */}
       <section className="bg-[#034B5C] text-white">
-        <div className="max-w-6xl mx-auto px-6 py-14">
-          <h2 className="text-3xl font-extrabold mb-2">
-            {greeting}, <span className="text-[#B5E467]">Delphine</span>
-          </h2>
-          <p className="text-white/70 text-lg">
-            Vos outils pour gagner du temps au quotidien.
-          </p>
+        <div className="max-w-6xl mx-auto px-6 py-10 flex items-center gap-5">
+          <img
+            src="/delphine.jpg"
+            alt="Delphine Pilorge"
+            className="w-16 h-16 rounded-full object-cover border-3 border-[#B5E467] shrink-0 hidden sm:block"
+            style={{ border: "3px solid #B5E467" }}
+          />
+          <div>
+            <h2 className="text-3xl font-extrabold mb-1">
+              {greeting}, <span className="text-[#B5E467]">Delphine</span>
+            </h2>
+            <p className="text-white/70 text-base">
+              Vos outils pour gagner du temps au quotidien.
+            </p>
+          </div>
         </div>
       </section>
 
