@@ -290,10 +290,11 @@ function timeAgo(ts: number): string {
 }
 
 interface OpenAIUsage {
-  cost_eur: number;
-  cost_usd: number;
+  cost_eur: number | null;
+  cost_usd: number | null;
   total_tokens: number;
   period: string;
+  billing_ok: boolean;
   fromCache?: boolean;
 }
 
@@ -304,6 +305,7 @@ export default function Home() {
   const [stats, setStats] = useState<Record<string, number>>({});
   const [userName, setUserName] = useState("Delphine");
   const [openaiUsage, setOpenaiUsage] = useState<OpenAIUsage | null>(null);
+  const [openaiLoaded, setOpenaiLoaded] = useState(false);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Bonjour" : hour < 18 ? "Bon après-midi" : "Bonsoir";
 
@@ -326,7 +328,8 @@ export default function Home() {
     fetch("/api/openai-usage")
       .then((r) => r.ok ? r.json() : null)
       .then((d) => { if (d && !d.error) setOpenaiUsage(d); })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setOpenaiLoaded(true));
 
     try {
       const raw = localStorage.getItem("prodige_onboarding");
@@ -759,7 +762,7 @@ export default function Home() {
       </section>
 
       {/* ── OpenAI Usage strip ── */}
-      {openaiUsage && (
+      {openaiLoaded && (
         <section className="relative z-10 max-w-7xl mx-auto px-6 pb-4">
           <div
             className="flex flex-wrap items-center gap-4 px-5 py-3 rounded-xl anim-fade-up d-400"
@@ -787,23 +790,29 @@ export default function Home() {
 
             {/* Cost */}
             <div className="flex items-baseline gap-1.5">
-              <span
-                className="text-base font-bold leading-none"
-                style={{ fontFamily: "Syne, sans-serif", color: "white" }}
-              >
-                {openaiUsage.cost_eur.toFixed(2)} €
-              </span>
-              <span className="text-white/20 text-[10px]">
-                ({openaiUsage.cost_usd.toFixed(2)} $)
-              </span>
+              {openaiUsage?.cost_eur != null ? (
+                <>
+                  <span
+                    className="text-base font-bold leading-none"
+                    style={{ fontFamily: "Syne, sans-serif", color: "white" }}
+                  >
+                    {openaiUsage.cost_eur.toFixed(2)} €
+                  </span>
+                  <span className="text-white/20 text-[10px]">
+                    ({openaiUsage.cost_usd!.toFixed(2)} $)
+                  </span>
+                </>
+              ) : (
+                <span className="text-white/20 text-sm font-semibold">— €</span>
+              )}
             </div>
 
-            {openaiUsage.total_tokens > 0 && (
+            {(openaiUsage?.total_tokens ?? 0) > 0 && (
               <>
                 <div className="w-px h-4 bg-white/[0.06] flex-shrink-0 hidden sm:block" />
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-sm font-semibold text-white/50">
-                    {openaiUsage.total_tokens.toLocaleString("fr-FR")}
+                    {openaiUsage!.total_tokens.toLocaleString("fr-FR")}
                   </span>
                   <span className="text-white/20 text-[10px]">tokens</span>
                 </div>
@@ -813,28 +822,30 @@ export default function Home() {
             <div className="w-px h-4 bg-white/[0.06] flex-shrink-0 hidden sm:block" />
 
             {/* Period */}
-            <p className="text-white/15 text-[10px]">{openaiUsage.period}</p>
+            <p className="text-white/15 text-[10px]">{openaiUsage?.period ?? "ce mois"}</p>
 
-            {/* Budget indicator — budget $20/mois */}
-            <div className="ml-auto hidden md:flex items-center gap-2">
-              <div className="h-1 w-24 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${Math.min(100, (openaiUsage.cost_usd / 20) * 100)}%`,
-                    background: openaiUsage.cost_usd > 16
-                      ? "linear-gradient(90deg, rgba(239,68,68,0.5), rgba(239,68,68,0.8))"
-                      : openaiUsage.cost_usd > 10
-                        ? "linear-gradient(90deg, rgba(251,146,60,0.5), rgba(251,146,60,0.8))"
-                        : "linear-gradient(90deg, rgba(181,228,103,0.4), rgba(181,228,103,0.6))",
-                    transition: "width 0.8s ease",
-                  }}
-                />
+            {/* Budget indicator — budget $20/mois (seulement si coût disponible) */}
+            {openaiUsage?.cost_usd != null && (
+              <div className="ml-auto hidden md:flex items-center gap-2">
+                <div className="h-1 w-24 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.min(100, (openaiUsage.cost_usd / 20) * 100)}%`,
+                      background: openaiUsage.cost_usd > 16
+                        ? "linear-gradient(90deg, rgba(239,68,68,0.5), rgba(239,68,68,0.8))"
+                        : openaiUsage.cost_usd > 10
+                          ? "linear-gradient(90deg, rgba(251,146,60,0.5), rgba(251,146,60,0.8))"
+                          : "linear-gradient(90deg, rgba(181,228,103,0.4), rgba(181,228,103,0.6))",
+                      transition: "width 0.8s ease",
+                    }}
+                  />
+                </div>
+                <p className="text-white/15 text-[10px]">
+                  {((openaiUsage.cost_usd / 20) * 100).toFixed(0)}% du budget
+                </p>
               </div>
-              <p className="text-white/15 text-[10px]">
-                {((openaiUsage.cost_usd / 20) * 100).toFixed(0)}% du budget
-              </p>
-            </div>
+            )}
           </div>
         </section>
       )}
