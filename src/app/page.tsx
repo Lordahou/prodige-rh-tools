@@ -294,8 +294,12 @@ export default function Home() {
   const [recent, setRecent] = useState<RecentModule[]>([]);
   const [onboardingAlerts, setOnboardingAlerts] = useState(0);
   const [stats, setStats] = useState<Record<string, number>>({});
+  const [userName, setUserName] = useState("Delphine");
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Bonjour" : hour < 18 ? "Bon après-midi" : "Bonsoir";
+
+  const userPhoto = userName === "Clémence" ? "/clemence.jpg" : "/delphine.jpg";
+  const userTitle = userName === "Clémence" ? "Chargée de recrutement" : "Gérante · Prodige RH";
 
   useEffect(() => {
     try {
@@ -306,6 +310,9 @@ export default function Home() {
       const rawS = localStorage.getItem("prodige_stats");
       if (rawS) setStats(JSON.parse(rawS));
     } catch {}
+    // Lire le cookie utilisateur
+    const match = document.cookie.match(/prodige_user=([^;]+)/);
+    if (match) setUserName(decodeURIComponent(match[1]));
     try {
       const raw = localStorage.getItem("prodige_onboarding");
       if (raw) {
@@ -483,7 +490,7 @@ export default function Home() {
             >
               {greeting},
               <br />
-              <span style={{ color: "#B5E467" }}>Delphine</span>
+              <span style={{ color: "#B5E467" }}>{userName}</span>
             </h1>
 
             <p className="text-white/40 text-base lg:text-[17px] leading-relaxed mb-10 max-w-md">
@@ -555,8 +562,8 @@ export default function Home() {
               }}
             >
               <img
-                src="/delphine.jpg"
-                alt="Delphine Pilorge"
+                src={userPhoto}
+                alt={userName}
                 className="w-full h-full object-cover"
               />
             </div>
@@ -576,10 +583,10 @@ export default function Home() {
                 className="text-white text-xs font-bold"
                 style={{ fontFamily: "Syne, sans-serif" }}
               >
-                Delphine Pilorge
+                {userName === "Clémence" ? "Clémence Retière" : "Delphine Pilorge"}
               </p>
               <p className="text-[10px] mt-0.5" style={{ color: "#B5E467" }}>
-                Gérante · Prodige RH
+                {userTitle}
               </p>
             </div>
           </div>

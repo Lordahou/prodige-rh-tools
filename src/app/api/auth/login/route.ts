@@ -16,9 +16,19 @@ export async function POST(request: NextRequest) {
 
   const token = await createSession(email.toLowerCase());
 
+  const prenom = email.toLowerCase().startsWith("clemence") ? "Clémence" : "Delphine";
+
   const response = NextResponse.json({ ok: true });
   response.cookies.set("prodige_session", token, {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 30,
+    path: "/",
+  });
+  // Cookie lisible côté client pour le greeting (pas de données sensibles)
+  response.cookies.set("prodige_user", prenom, {
+    httpOnly: false,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: 60 * 60 * 24 * 30,
