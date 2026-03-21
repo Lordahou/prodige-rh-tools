@@ -292,6 +292,7 @@ function timeAgo(ts: number): string {
 interface OpenAIUsage {
   cost_eur: number | null;
   cost_usd: number | null;
+  cost_eur_estimated: number | null;
   total_tokens: number;
   period: string;
   billing_ok: boolean;
@@ -813,15 +814,17 @@ export default function Home() {
             <div className="flex items-baseline gap-1.5">
               {openaiUsage?.cost_eur != null ? (
                 <>
-                  <span
-                    className="text-base font-bold leading-none"
-                    style={{ fontFamily: "Syne, sans-serif", color: "white" }}
-                  >
+                  <span className="text-base font-bold leading-none" style={{ fontFamily: "Syne, sans-serif", color: "white" }}>
                     {openaiUsage.cost_eur.toFixed(2)} €
                   </span>
-                  <span className="text-white/20 text-[10px]">
-                    ({openaiUsage.cost_usd!.toFixed(2)} $)
+                  <span className="text-white/20 text-[10px]">({openaiUsage.cost_usd!.toFixed(2)} $)</span>
+                </>
+              ) : openaiUsage?.cost_eur_estimated != null ? (
+                <>
+                  <span className="text-base font-bold leading-none" style={{ fontFamily: "Syne, sans-serif", color: "rgba(181,228,103,0.7)" }}>
+                    ~{openaiUsage.cost_eur_estimated.toFixed(2)} €
                   </span>
+                  <span className="text-white/20 text-[10px]">estimé GPT-4o</span>
                 </>
               ) : (
                 <span className="text-white/20 text-sm font-semibold">— €</span>

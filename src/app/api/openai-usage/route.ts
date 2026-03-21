@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, safeErrorMessage } from "@/lib/auth-api";
 import { sql } from "@/lib/db";
 
+// Tarification GPT-4o (pondération 70% input / 30% output)
+// Input: $2.50/1M · Output: $10.00/1M → moyenne: ~$4.75/1M tokens
+const GPT4O_RATE_PER_TOKEN = 4.75 / 1_000_000; // USD
+const EUR_RATE = 0.92;
+
 // Simple in-memory cache — 1 heure de TTL
 let _cache: {
   cost_eur: number | null;
   cost_usd: number | null;
+  cost_eur_estimated: number | null;
   total_tokens: number;
   period: string;
   billing_ok: boolean;
@@ -80,6 +86,11 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  _cache = { cost_eur, cost_usd, total_tokens, period, billing_ok, ts: Date.now() };
+  // Estimation basée sur les tokens loggés (quand billing API indisponible)
+  const cost_eur_estimated = total_tokens > 0
+    ? total_tokens * GPT4O_RATE_PER_TOKEN * EUR_RATE
+    : null;
+
+  _cache = { cost_eur, cost_usd, cost_eur_estimated, total_tokens, period, billing_ok, ts: Date.now() };
   return NextResponse.json({ ..._cache, fromCache: false });
 }
