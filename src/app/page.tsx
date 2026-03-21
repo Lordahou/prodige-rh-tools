@@ -1,7 +1,55 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+
+/* ── ROI config ──────────────────────────────────── */
+const TIME_SAVINGS: Record<string, { minutes: number; label: string }> = {
+  "/synthese":        { minutes: 45, label: "Synthèse" },
+  "/dashboard":       { minutes: 60, label: "Dashboard" },
+  "/fiche-poste":     { minutes: 25, label: "Fiche de poste" },
+  "/compte-rendu":    { minutes: 20, label: "Compte-rendu" },
+  "/proposition":     { minutes: 30, label: "Proposition" },
+  "/prequalification":{ minutes: 15, label: "Préqualif." },
+  "/veille":          { minutes: 90, label: "Veille" },
+  "/communication":   { minutes: 15, label: "Kit comm." },
+  "/onboarding":      { minutes: 10, label: "Onboarding" },
+};
+
+function formatRoiTime(minutes: number): { value: string; unit: string; days: string } {
+  if (minutes === 0) return { value: "0", unit: "min", days: "" };
+  if (minutes < 60) return { value: String(minutes), unit: "min", days: "" };
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const days = (minutes / 60 / 7).toFixed(1).replace(".", ",");
+  return {
+    value: m > 0 ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`,
+    unit: "économisées",
+    days: `≈ ${days} j de travail`,
+  };
+}
+
+function useCountUp(target: number, duration = 1000) {
+  const [display, setDisplay] = useState(0);
+  const prev = useRef(0);
+  useEffect(() => {
+    if (target === prev.current) return;
+    const start = prev.current;
+    const diff = target - start;
+    if (diff === 0) return;
+    const steps = 40;
+    const step = diff / steps;
+    const delay = duration / steps;
+    let i = 0;
+    const timer = setInterval(() => {
+      i++;
+      if (i >= steps) { setDisplay(target); prev.current = target; clearInterval(timer); }
+      else setDisplay(Math.round(start + step * i));
+    }, delay);
+    return () => clearInterval(timer);
+  }, [target, duration]);
+  return display;
+}
 
 /* ── Support Modal ───────────────────────────────── */
 function SupportModal({ onClose }: { onClose: () => void }) {
@@ -245,6 +293,7 @@ export default function Home() {
   const [supportOpen, setSupportOpen] = useState(false);
   const [recent, setRecent] = useState<RecentModule[]>([]);
   const [onboardingAlerts, setOnboardingAlerts] = useState(0);
+  const [stats, setStats] = useState<Record<string, number>>({});
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Bonjour" : hour < 18 ? "Bon après-midi" : "Bonsoir";
 
@@ -252,6 +301,10 @@ export default function Home() {
     try {
       const stored = localStorage.getItem("prodige_recent");
       if (stored) setRecent(JSON.parse(stored));
+    } catch {}
+    try {
+      const rawS = localStorage.getItem("prodige_stats");
+      if (rawS) setStats(JSON.parse(rawS));
     } catch {}
     try {
       const raw = localStorage.getItem("prodige_onboarding");
@@ -282,7 +335,25 @@ export default function Home() {
       localStorage.setItem("prodige_recent", JSON.stringify(updated));
       setRecent(updated);
     } catch {}
+    try {
+      const prevStats: Record<string, number> = JSON.parse(localStorage.getItem("prodige_stats") || "{}");
+      const updatedStats = { ...prevStats, [href]: (prevStats[href] ?? 0) + 1 };
+      localStorage.setItem("prodige_stats", JSON.stringify(updatedStats));
+      setStats(updatedStats);
+    } catch {}
   };
+
+  /* ── ROI computed ── */
+  const totalMinutes = Object.entries(stats).reduce((acc, [href, count]) => {
+    return acc + (TIME_SAVINGS[href]?.minutes ?? 0) * count;
+  }, 0);
+  const totalUses = Object.values(stats).reduce((a, b) => a + b, 0);
+  const displayedMinutes = useCountUp(totalMinutes);
+  const roiTime = formatRoiTime(displayedMinutes);
+  const topModules = Object.entries(stats)
+    .filter(([href]) => TIME_SAVINGS[href])
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 4);
 
   return (
     <main
@@ -505,6 +576,120 @@ export default function Home() {
               </p>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── ROI Banner ── */}
+      <section className="relative z-10 max-w-7xl mx-auto px-6 pb-6">
+        <div
+          className="rounded-2xl p-5 anim-fade-up d-300"
+          style={{
+            background: totalMinutes > 0
+              ? "rgba(181,228,103,0.06)"
+              : "rgba(255,255,255,0.025)",
+            border: totalMinutes > 0
+              ? "1px solid rgba(181,228,103,0.18)"
+              : "1px solid rgba(255,255,255,0.06)",
+            transition: "background 0.5s, border-color 0.5s",
+          }}
+        >
+          <div className="flex flex-wrap items-center gap-6">
+            {/* Icon + label */}
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: totalMinutes > 0 ? "rgba(181,228,103,0.14)" : "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(181,228,103,0.18)",
+                  color: "#B5E467",
+                }}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-white/30 text-[10px] font-bold uppercase tracking-[0.18em] mb-0.5">
+                  ROI · Temps économisé
+                </p>
+                {totalMinutes === 0 ? (
+                  <p className="text-white/20 text-sm">Utilisez les outils pour calculer votre gain de temps</p>
+                ) : (
+                  <div className="flex items-baseline gap-2">
+                    <span
+                      className="text-2xl font-bold leading-none"
+                      style={{ fontFamily: "Syne, sans-serif", color: "#B5E467" }}
+                    >
+                      {roiTime.value}
+                    </span>
+                    <span className="text-white/50 text-sm font-medium">{roiTime.unit}</span>
+                    {roiTime.days && (
+                      <span className="text-white/25 text-xs">{roiTime.days}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Separator */}
+            {totalMinutes > 0 && (
+              <>
+                <div className="hidden sm:block w-px self-stretch" style={{ background: "rgba(255,255,255,0.08)" }} />
+
+                {/* Uses count */}
+                <div className="text-center">
+                  <p
+                    className="text-xl font-bold leading-none mb-0.5"
+                    style={{ fontFamily: "Syne, sans-serif", color: "white" }}
+                  >
+                    {totalUses}
+                  </p>
+                  <p className="text-white/25 text-[10px]">utilisation{totalUses > 1 ? "s" : ""}</p>
+                </div>
+
+                <div className="hidden sm:block w-px self-stretch" style={{ background: "rgba(255,255,255,0.08)" }} />
+
+                {/* Top modules breakdown */}
+                <div className="flex flex-wrap gap-3">
+                  {topModules.map(([href, count]) => {
+                    const cfg = TIME_SAVINGS[href];
+                    const mod = modules.find((m) => m.href === href);
+                    return (
+                      <div key={href} className="flex items-center gap-2">
+                        <div
+                          className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: "rgba(181,228,103,0.08)", color: "rgba(181,228,103,0.6)" }}
+                        >
+                          <span style={{ transform: "scale(0.65)", display: "block" }}>{mod?.icon}</span>
+                        </div>
+                        <div>
+                          <p className="text-white/50 text-[11px] font-semibold leading-tight">{cfg.label}</p>
+                          <p className="text-white/25 text-[10px]">{count}× · {cfg.minutes * count} min</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Progress bar — fill proportional to totalMinutes (capped at 8h = 480 min) */}
+          {totalMinutes > 0 && (
+            <div
+              className="mt-4 h-px rounded-full overflow-hidden"
+              style={{ background: "rgba(255,255,255,0.06)" }}
+            >
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${Math.min(100, (totalMinutes / 480) * 100)}%`,
+                  background: "linear-gradient(90deg, rgba(181,228,103,0.4), #B5E467)",
+                  transition: "width 1s ease",
+                }}
+              />
+            </div>
+          )}
         </div>
       </section>
 
