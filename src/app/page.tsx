@@ -212,9 +212,20 @@ const modules = [
       </svg>
     ),
   },
+  {
+    title: "Onboarding Candidats",
+    description: "Suivi post-recrutement : rappels J+2, J+21, J+30 avec relances email personnalisées.",
+    href: "/onboarding",
+    badge: false,
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+      </svg>
+    ),
+  },
 ];
 
-const delayClasses = ["d-50", "d-100", "d-150", "d-200", "d-250", "d-300", "d-350", "d-400"];
+const delayClasses = ["d-50", "d-100", "d-150", "d-200", "d-250", "d-300", "d-350", "d-400", "d-500"];
 
 /* ── Page ────────────────────────────────────────── */
 type RecentModule = { href: string; title: string; ts: number };
@@ -233,6 +244,7 @@ function timeAgo(ts: number): string {
 export default function Home() {
   const [supportOpen, setSupportOpen] = useState(false);
   const [recent, setRecent] = useState<RecentModule[]>([]);
+  const [onboardingAlerts, setOnboardingAlerts] = useState(0);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Bonjour" : hour < 18 ? "Bon après-midi" : "Bonsoir";
 
@@ -240,6 +252,26 @@ export default function Home() {
     try {
       const stored = localStorage.getItem("prodige_recent");
       if (stored) setRecent(JSON.parse(stored));
+    } catch {}
+    try {
+      const raw = localStorage.getItem("prodige_onboarding");
+      if (raw) {
+        const entries = JSON.parse(raw) as Array<{
+          statut: string;
+          dates: { j2: string; j21: string; j30: string };
+          reminders: { j2: { sent: boolean }; j21_candidat: { sent: boolean }; j21_client: { sent: boolean }; j30: { sent: boolean } };
+        }>;
+        const now = new Date(); now.setHours(0,0,0,0);
+        const count = entries.filter((e) => {
+          if (e.statut !== "actif") return false;
+          const overdue = (d: string, sent: boolean) => !sent && new Date(d + "T00:00:00") < now;
+          return overdue(e.dates.j2, e.reminders.j2.sent) ||
+            overdue(e.dates.j21, e.reminders.j21_candidat.sent) ||
+            overdue(e.dates.j21, e.reminders.j21_client.sent) ||
+            overdue(e.dates.j30, e.reminders.j30.sent);
+        }).length;
+        setOnboardingAlerts(count);
+      }
     } catch {}
   }, []);
 
@@ -384,7 +416,7 @@ export default function Home() {
             {/* Stats row */}
             <div className="flex items-center gap-7">
               {[
-                { value: "8", label: "outils" },
+                { value: "9", label: "outils" },
                 { value: "7", label: "avec IA", accent: true },
                 { value: "∞", label: "possibilités" },
               ].map((s, i) => (
@@ -527,8 +559,18 @@ export default function Home() {
               <div className={`card-glass rounded-2xl p-6 h-full anim-fade-up ${delayClasses[i]} ${"featured" in m && m.featured ? "card-featured" : ""}`}>
                 {/* Top row */}
                 <div className="flex items-start justify-between mb-5">
-                  <div className="icon-box">
-                    {m.icon}
+                  <div className="relative">
+                    <div className="icon-box">
+                      {m.icon}
+                    </div>
+                    {m.href === "/onboarding" && onboardingAlerts > 0 && (
+                      <span
+                        className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                        style={{ background: "#ef4444", boxShadow: "0 0 0 2px #060e1a" }}
+                      >
+                        {onboardingAlerts}
+                      </span>
+                    )}
                   </div>
                   {m.badge && <span className="badge-ia">IA</span>}
                 </div>
