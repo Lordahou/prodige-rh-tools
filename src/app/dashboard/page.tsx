@@ -34,15 +34,25 @@ interface ActionPlan {
 function parseClientsFile(workbook: XLSX.WorkBook): ClientData[] {
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
-  return json.map((row) => ({
-    nom: String(row["nom"] || row["Nom"] || ""),
-    factureeTTC: Number(row["facturé TTC"] || row["Facturé TTC"] || 0),
-    factureeHT: Number(row["facturé HT"] || row["Facturé HT"] || 0),
-    encaisse: Number(row["encaissé"] || row["Encaissé"] || 0),
-    encours: Number(row["encours"] || row["Encours"] || 0),
-    statut: String(row["statut"] || row["Statut"] || ""),
-    ville: String(row["ville"] || row["Ville"] || ""),
-  })).filter((c) => c.nom);
+  return json.map((row) => {
+    const get = (key: string) => {
+      if (row[key] !== undefined) return row[key];
+      const k = Object.keys(row).find((c) => c.trim().toLowerCase() === key.trim().toLowerCase());
+      return k ? row[k] : undefined;
+    };
+    return {
+      nom: String(
+        get("nom du client") || get("nom") || get("client") ||
+        get("raison sociale") || get("raison_sociale") || ""
+      ).trim(),
+      factureeTTC: Number(get("facturé ttc") ?? get("facture ttc") ?? get("total ttc") ?? 0),
+      factureeHT: Number(get("facturé ht") ?? get("facture ht") ?? get("total ht") ?? 0),
+      encaisse: Number(get("encaissé") ?? get("encaisse") ?? 0),
+      encours: Number(get("encours") ?? 0),
+      statut: String(get("statut") || "").trim(),
+      ville: String(get("ville") || "").trim(),
+    };
+  }).filter((c) => c.nom);
 }
 
 function parseFacturesFile(workbook: XLSX.WorkBook): FactureData[] {
@@ -75,7 +85,7 @@ function parseFacturesFile(workbook: XLSX.WorkBook): FactureData[] {
       date: dateStr,
       numero,
       statut: String(get("statut de la facture") || ""),
-      client: String(get("nom du client") || ""),
+      client: String(get("nom du client") || get("client") || get("nom") || "").trim(),
       montantTTC: Number(get("montant TTC") ?? 0),
       montantHT: Number(get("montant HT") ?? 0),
     };
@@ -166,12 +176,24 @@ export default function DashboardPage() {
     const joursProdRestants = joursProd * (moisRestants / 12);
     const tjmNecessaire = joursProdRestants > 0 ? resteAFacturer / joursProdRestants : 0;
 
+    const exerciceYear = parMoisMap.size > 0
+      ? (Array.from(parMoisMap.keys()).sort().at(-1)?.split("/")?.[1] ?? String(new Date().getFullYear()))
+      : String(new Date().getFullYear());
+    const MOIS_KEYS = ["01","02","03","04","05","06","07","08","09","10","11","12"];
+    let cumulCA = 0;
+    const caRealCumulatif = MOIS_KEYS.map((m) => {
+      const d = parMoisMap.get(`${m}/${exerciceYear}`);
+      cumulCA += d?.facture ?? 0;
+      return cumulCA;
+    });
+
     return {
       totalFactureTTC, totalFactureHT, totalEncaisse, totalEncours,
       tauxEncaissement, nbClients, nbClientsEnRetard, nbClientsAJour,
       clientsEnRetard, topClients, nbFactures, montantMoyen, nbAvoirs,
       statutCounts, parMois, moisEcoules, retardObjectif,
       tjmActuel, tjmObjectif, tjmNecessaire, resteAFacturer, cibleCumul,
+      caRealCumulatif, exerciceYear,
     };
   }, [clients, factures, objectifCA, joursProd]);
 
@@ -286,6 +308,83 @@ export default function DashboardPage() {
                   {kpi.sub && <p className={`text-xs mt-1 ${kpi.color === "bg-white" ? "text-gray-400" : kpi.text === "text-white" ? "text-white/50" : "text-[#081F34]/40"}`}>{kpi.sub}</p>}
                 </div>
               ))}
+            </div>
+
+            {/* Courbe CA Réel vs Objectif */}
+            <div className="bg-white rounded-2xl p-6 mb-6" style={{ boxShadow: "var(--shadow-card)" }}>
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <h2 className="text-lg font-bold text-[#081F34]">
+                    CA Réel vs Objectif
+                    <span className="text-gray-400 text-sm font-normal ml-2">{kpis.exerciceYear}</span>
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Cumul facturé HT mensuel — Jan → Déc</p>
+                </div>
+                <div className="flex items-center gap-5 text-xs text-gray-500">
+                  <span className="flex items-center gap-1.5">
+                    <svg width="28" height="12" className="shrink-0"><line x1="0" y1="6" x2="28" y2="6" stroke="#B5E467" strokeWidth="2.5" strokeLinecap="round" /></svg>
+                    CA Réel cumulé
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <svg width="28" height="12" className="shrink-0"><line x1="0" y1="6" x2="28" y2="6" stroke="#034B5C" strokeWidth="2" strokeDasharray="5,3" /></svg>
+                    Objectif linéaire
+                  </span>
+                </div>
+              </div>
+              {(() => {
+                const LABELS = ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun", "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc"];
+                const VW = 800, VH = 200, PL = 60, PT = 16, PR = 20, PB = 32;
+                const cW = VW - PL - PR, cH = VH - PT - PB;
+                const maxY = objectifCA * 1.08;
+                const xAt = (i: number) => PL + (i / 11) * cW;
+                const yAt = (v: number) => PT + cH - Math.max(0, Math.min(1, v / maxY)) * cH;
+                const objPts = Array.from({ length: 12 }, (_, i) =>
+                  `${xAt(i)},${yAt((objectifCA / 12) * (i + 1))}`
+                ).join(" ");
+                const n = kpis.moisEcoules;
+                const realArr = kpis.caRealCumulatif.slice(0, n);
+                const realPts = realArr.map((v, i) => `${xAt(i)},${yAt(v)}`);
+                const areaPts = n > 0
+                  ? [`${xAt(0)},${PT + cH}`, ...realPts, `${xAt(n - 1)},${PT + cH}`].join(" ")
+                  : "";
+                const yTicks = [0, 0.25, 0.5, 0.75, 1].map(f => ({
+                  y: yAt(objectifCA * f),
+                  label: f === 0 ? "0" : `${Math.round(objectifCA * f / 1000)}k`,
+                }));
+                return (
+                  <svg viewBox={`0 0 ${VW} ${VH}`} className="w-full" style={{ height: 200, display: "block" }}>
+                    {yTicks.map(({ y, label }) => (
+                      <g key={label}>
+                        <line x1={PL} x2={VW - PR} y1={y} y2={y} stroke="#f0ebe3" strokeWidth="1" />
+                        <text x={PL - 6} y={y + 4} textAnchor="end" fontSize="10" fill="#9ca3af">{label}</text>
+                      </g>
+                    ))}
+                    {LABELS.map((l, i) => (
+                      <text key={l} x={xAt(i)} y={VH - 6} textAnchor="middle" fontSize="10"
+                        fill={i < n ? "#6b7280" : "#d1d5db"}>{l}</text>
+                    ))}
+                    {n > 0 && <polygon points={areaPts} fill="#B5E467" fillOpacity="0.12" />}
+                    <polyline points={objPts} fill="none" stroke="#034B5C" strokeWidth="1.5"
+                      strokeDasharray="6,4" opacity="0.7" />
+                    {n > 0 && (
+                      <polyline points={realPts.join(" ")} fill="none" stroke="#B5E467"
+                        strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+                    )}
+                    {realArr.map((v, i) => (
+                      <g key={i}>
+                        <circle cx={xAt(i)} cy={yAt(v)} r="4" fill="#B5E467" stroke="white" strokeWidth="2" />
+                        {i === n - 1 && (
+                          <text x={xAt(i)} y={yAt(v) - 10} textAnchor="middle" fontSize="10"
+                            fill="#4d7c0f" fontWeight="bold">{Math.round(v / 1000)}k€</text>
+                        )}
+                      </g>
+                    ))}
+                    <text x={xAt(11)} y={yAt(objectifCA) - 8} textAnchor="end"
+                      fontSize="10" fill="#034B5C" fontWeight="bold"
+                    >{Math.round(objectifCA / 1000)}k€</text>
+                  </svg>
+                );
+              })()}
             </div>
 
             {/* Progression + TJM */}
@@ -416,7 +515,7 @@ export default function DashboardPage() {
                       <span className="w-7 h-7 rounded-lg bg-[#034B5C] text-[#B5E467] text-xs flex items-center justify-center font-bold shrink-0">{idx + 1}</span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-0.5">
-                          <span className="text-sm font-medium truncate">{c.nom}</span>
+                          <span className="text-sm font-medium text-[#081F34] min-w-0 truncate">{c.nom}</span>
                           <span className="font-bold text-[#081F34] ml-2 shrink-0">{fmt(c.factureeTTC)}</span>
                         </div>
                         <div className="h-1.5 bg-[#f0ebe3] rounded-full overflow-hidden">
@@ -477,7 +576,7 @@ export default function DashboardPage() {
                       {factures.filter(f => f.statut !== "Brouillon").map((f, i) => (
                         <tr key={i} className="border-b border-[#f0ebe3] hover:bg-[#faf8f5]">
                           <td className="py-3 px-2 font-medium text-gray-500">{f.numero}</td>
-                          <td className="py-3 px-2 font-medium">{f.client}</td>
+                          <td className="py-3 px-2 font-medium text-[#081F34]">{f.client}</td>
                           <td className="py-3 px-2 text-gray-500">{f.date}</td>
                           <td className={`py-3 px-2 text-right font-bold ${f.montantHT < 0 ? "text-red-500" : "text-[#081F34]"}`}>{fmt(f.montantHT)}</td>
                           <td className={`py-3 px-2 text-right ${f.montantTTC < 0 ? "text-red-400" : "text-gray-600"}`}>{fmt(f.montantTTC)}</td>
