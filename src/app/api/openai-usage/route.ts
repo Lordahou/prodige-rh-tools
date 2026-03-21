@@ -39,10 +39,14 @@ export async function GET(request: NextRequest) {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const endDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
 
+    // Utilise OPENAI_BILLING_KEY si disponible (clé avec permission billing:read)
+    // Sinon tente avec OPENAI_API_KEY (peut échouer selon les permissions)
+    const billingKey = process.env.OPENAI_BILLING_KEY ?? process.env.OPENAI_API_KEY;
+
     const billingRes = await fetch(
       `https://api.openai.com/dashboard/billing/usage?start_date=${startDate}&end_date=${endDate}`,
       {
-        headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+        headers: { Authorization: `Bearer ${billingKey}` },
         cache: "no-store",
       }
     );
