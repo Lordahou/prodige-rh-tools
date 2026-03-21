@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import ModuleLayout from "@/components/ModuleLayout";
 
 interface Action { action: string; responsable: string; echeance: string; }
 interface PointAborde { theme: string; contenu: string; decisions: string[]; }
@@ -89,25 +89,12 @@ ${d.prochain_rdv ? `\nProchain RDV : ${d.prochain_rdv}` : ""}`;
   };
 
   return (
-    <main className="min-h-screen bg-[#f0ebe3]">
-      <header className="bg-[#081F34]">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-4">
-          <Link href="/" className="text-[#B5E467] hover:text-white transition-colors text-sm font-medium flex items-center gap-1">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" /></svg>
-            Retour
-          </Link>
-          <div className="h-5 w-px bg-gray-600" />
-          <h1 className="text-lg font-bold text-white">Compte-rendu <span className="text-[#B5E467]">IA</span></h1>
-        </div>
-      </header>
-
-      <section className="bg-[#034B5C] text-white">
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          <h2 className="text-2xl font-extrabold mb-1">Compte-rendu de réunion <span className="text-[#B5E467]">automatique</span></h2>
-          <p className="text-white/60 text-sm">Collez le transcript d'un call client — l'IA génère un CR structuré avec actions et décisions.</p>
-        </div>
-      </section>
-
+    <ModuleLayout
+      title="Compte-rendu"
+      subtitle="Collez le transcript d'un call client — l'IA génère un CR structuré avec actions et décisions."
+      badge={true}
+      icon="chat"
+    >
       <div className="max-w-6xl mx-auto px-6 py-8 grid lg:grid-cols-2 gap-8">
         {/* Formulaire */}
         <div className="bg-white rounded-2xl p-6 space-y-5" style={{ boxShadow: "0 2px 8px rgba(8,31,52,0.06)" }}>
@@ -242,6 +229,6 @@ ${d.prochain_rdv ? `\nProchain RDV : ${d.prochain_rdv}` : ""}`;
           )}
         </div>
       </div>
-    </main>
+    </ModuleLayout>
   );
 }

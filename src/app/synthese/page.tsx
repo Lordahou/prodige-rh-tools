@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import ModuleLayout from "@/components/ModuleLayout";
 
 interface Experience {
   titre: string;
@@ -368,21 +368,12 @@ export default function SynthesePage() {
   const labelClass = "block text-sm font-semibold text-[#081F34] mb-1.5";
 
   return (
-    <main className="min-h-screen bg-[#f0ebe3]">
-      {/* Header */}
-      <header className="bg-[#081F34]">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-4">
-          <Link href="/" className="text-[#B5E467] hover:text-white transition-colors text-sm font-medium flex items-center gap-1">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" /></svg>
-            Retour
-          </Link>
-          <div className="h-5 w-px bg-gray-600" />
-          <h1 className="text-lg font-bold text-white">
-            Synthese <span className="text-[#B5E467]">Candidat</span>
-          </h1>
-        </div>
-      </header>
-
+    <ModuleLayout
+      title="Synthèse Candidat"
+      subtitle="Générez une synthèse de candidature au format Word avec l'IA, fidèle à votre charte Prodige RH."
+      badge={true}
+      icon="document"
+    >
       <div className="max-w-5xl mx-auto px-6 py-8">
         {/* Stepper */}
         <div className="flex items-center justify-between mb-8 bg-white rounded-2xl p-4" style={{ boxShadow: "var(--shadow-card)" }}>
@@ -890,12 +881,6 @@ export default function SynthesePage() {
           )}
         </div>
       </div>
-
-      <footer className="bg-[#B5E467] mt-8">
-        <div className="max-w-5xl mx-auto px-6 py-4 text-center text-sm font-semibold text-[#081F34]">
-          Prodige RH — 27 rue Jules Ferry, 53 000 Laval
-        </div>
-      </footer>
-    </main>
+    </ModuleLayout>
   );
 }

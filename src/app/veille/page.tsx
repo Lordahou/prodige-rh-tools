@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import ModuleLayout from "@/components/ModuleLayout";
 
 interface TendanceLocale {
   titre: string;
@@ -122,41 +122,21 @@ export default function VeillePage() {
   ];
 
   return (
-    <main className="min-h-screen bg-[#f0ebe3]">
-      <header className="bg-[#081F34]">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-4">
-          <Link href="/" className="text-[#B5E467] hover:text-white transition-colors text-sm font-medium flex items-center gap-1">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" /></svg>
-            Retour
-          </Link>
-          <div className="h-5 w-px bg-gray-600" />
-          <h1 className="text-lg font-bold text-white">
-            Veille <span className="text-[#B5E467]">Tendances</span>
-          </h1>
-        </div>
-      </header>
-
-      {/* Hero zone */}
-      <section className="bg-[#034B5C] text-white">
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          <div className="flex flex-col md:flex-row items-start md:items-end gap-4 justify-between">
-            <div>
-              <h2 className="text-2xl font-extrabold mb-1">
-                Marche du recrutement <span className="text-[#B5E467]">Laval / Mayenne / Pays de la Loire</span>
-              </h2>
-              <p className="text-white/60 text-sm">
-                Rapport de veille genere par IA - tendances, profils penuriques, reglementation
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5 flex flex-col sm:flex-row gap-3">
+    <ModuleLayout
+      title="Veille Tendances"
+      subtitle="Rapport IA sur le marché du recrutement à Laval, Mayenne et Pays de la Loire."
+      badge={true}
+      icon="trending"
+    >
+      <div className="max-w-6xl mx-auto px-6 pt-6 pb-2">
+        <div className="bg-white rounded-2xl p-5 flex flex-col sm:flex-row gap-3" style={{ boxShadow: "0 2px 8px rgba(8,31,52,0.06)" }}>
+          <div className="flex flex-col sm:flex-row gap-3 flex-1">
             <input
               type="text"
               value={focus}
               onChange={(e) => setFocus(e.target.value)}
               placeholder="Focus optionnel (ex: profils IT, industrie agroalimentaire...)"
-              className="flex-1 bg-white/10 backdrop-blur border border-white/20 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#B5E467]"
+              className="flex-1 border border-[#e8e2d8] rounded-xl px-4 py-3 text-sm text-[#081F34] placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#B5E467] bg-white"
             />
             <button
               onClick={handleGenerate}
@@ -178,14 +158,14 @@ export default function VeillePage() {
           </div>
 
           {error && (
-            <div className="mt-4 bg-red-500/20 border border-red-400/30 rounded-xl p-3 text-sm text-red-200">
+            <div className="mt-3 bg-red-50 border border-red-100 rounded-xl p-3 text-sm text-red-600">
               {error}
             </div>
           )}
         </div>
-      </section>
+      </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="max-w-6xl mx-auto px-6 py-6">
         {data ? (
           <>
             {/* Section tabs */}
@@ -354,12 +334,6 @@ export default function VeillePage() {
           </div>
         ) : null}
       </div>
-
-      <footer className="bg-[#B5E467] mt-8">
-        <div className="max-w-6xl mx-auto px-6 py-4 text-center text-sm font-semibold text-[#081F34]">
-          Prodige RH — 27 rue Jules Ferry, 53 000 Laval
-        </div>
-      </footer>
-    </main>
+    </ModuleLayout>
   );
 }

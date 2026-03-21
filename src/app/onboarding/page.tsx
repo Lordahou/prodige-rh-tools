@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
+import ModuleLayout from "@/components/ModuleLayout";
 
 /* ── Types ─────────────────────────────────────────── */
 interface Onboarding {
@@ -324,47 +324,12 @@ export default function OnboardingPage() {
   const TEMPLATE_VARS = ["{{prenom_candidat}}", "{{candidat}}", "{{poste}}", "{{entreprise}}", "{{prenom_client}}"];
 
   return (
-    <main
-      className="min-h-screen"
-      style={{ background: "linear-gradient(160deg, #060e1a 0%, #071525 60%, #060e1a 100%)" }}
+    <ModuleLayout
+      title="Onboarding Candidats"
+      subtitle="Suivi post-recrutement avec relances automatiques J+2, J+21 et J+30."
+      icon="people"
+      darkBody={true}
     >
-      {/* ── Bg blobs ── */}
-      <div className="fixed inset-0 pointer-events-none dot-grid" />
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute anim-float-a" style={{ top: "-20%", right: "-8%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(3,75,92,0.3) 0%, transparent 68%)" }} />
-        <div className="absolute anim-float-b" style={{ bottom: "-20%", left: "-12%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(181,228,103,0.06) 0%, transparent 68%)" }} />
-      </div>
-
-      {/* ── Header ── */}
-      <header className="relative z-20 border-b" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-4">
-          <Link href="/" className="flex items-center justify-center w-8 h-8 rounded-lg transition-all hover:bg-white/5" style={{ border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)" }}>
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-            </svg>
-          </Link>
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(181,228,103,0.10)", border: "1px solid rgba(181,228,103,0.20)", color: "#B5E467" }}>
-              <svg className="w-4.5 h-4.5" style={{ width: 18, height: 18 }} fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-white text-[15px] font-bold leading-tight" style={{ fontFamily: "Syne, sans-serif" }}>
-                Onboarding Candidats
-              </h1>
-              <p className="text-white/30 text-[11px]">Suivi post-recrutement &amp; relances automatiques</p>
-            </div>
-          </div>
-          {alertCount > 0 && (
-            <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.2)" }}>
-              <span className="w-1.5 h-1.5 rounded-full bg-red-400 anim-pulse-lime" />
-              <span className="text-red-400 text-[11px] font-bold">{alertCount} relance{alertCount > 1 ? "s" : ""} en retard</span>
-            </div>
-          )}
-        </div>
-      </header>
-
       {/* ── Tabs ── */}
       <div className="relative z-10 max-w-5xl mx-auto px-6 pt-8">
         <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
@@ -851,17 +816,7 @@ export default function OnboardingPage() {
         </section>
       )}
 
-      {/* ── Footer ── */}
-      <footer className="relative z-10 mt-auto" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <p className="text-white/20 text-[11px]">Prodige RH — Laval (53)</p>
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#B5E467] anim-pulse-lime" />
-            <span className="text-white/20 text-[11px]">Suivi onboarding</span>
-          </div>
-        </div>
-      </footer>
-    </main>
+    </ModuleLayout>
   );
 }
 

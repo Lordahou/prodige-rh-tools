@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import ModuleLayout from "@/components/ModuleLayout";
 
 interface PostIdea {
   id: number;
@@ -75,20 +75,11 @@ export default function CommunicationPage() {
   const filteredPosts = filterStatus === "all" ? posts : posts.filter((p) => p.status === filterStatus);
 
   return (
-    <main className="min-h-screen bg-[#f0ebe3]">
-      <header className="bg-[#081F34]">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-4">
-          <Link href="/" className="text-[#B5E467] hover:text-white transition-colors text-sm font-medium flex items-center gap-1">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" /></svg>
-            Retour
-          </Link>
-          <div className="h-5 w-px bg-gray-600" />
-          <h1 className="text-lg font-bold text-white">
-            Kit <span className="text-[#B5E467]">Communication</span>
-          </h1>
-        </div>
-      </header>
-
+    <ModuleLayout
+      title="Kit Communication"
+      subtitle="Calendrier éditorial, idées de posts LinkedIn et prompts IA optimisés pour Prodige RH."
+      icon="megaphone"
+    >
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Tabs */}
         <div className="flex gap-3 mb-8">
@@ -245,12 +236,6 @@ export default function CommunicationPage() {
           </div>
         )}
       </div>
-
-      <footer className="bg-[#B5E467] mt-8">
-        <div className="max-w-6xl mx-auto px-6 py-4 text-center text-sm font-semibold text-[#081F34]">
-          Prodige RH — 27 rue Jules Ferry, 53 000 Laval
-        </div>
-      </footer>
-    </main>
+    </ModuleLayout>
   );
 }
