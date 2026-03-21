@@ -158,14 +158,16 @@ const impactColors: Record<string, string> = {
 // How old a cache is considered "fresh" (7 days in ms)
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-function formatCacheAge(createdAt: string): string {
+function formatCacheDate(createdAt: string): string {
   const date = new Date(createdAt);
-  const diffMs = Date.now() - date.getTime();
-  const diffH = Math.floor(diffMs / (1000 * 60 * 60));
-  if (diffH < 1) return "il y a moins d'une heure";
-  if (diffH < 24) return `il y a ${diffH}h`;
-  const diffD = Math.floor(diffH / 24);
-  return `il y a ${diffD} jour${diffD > 1 ? "s" : ""}`;
+  return date.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }) + " à " + date.toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function isCacheFresh(createdAt: string): boolean {
@@ -360,8 +362,8 @@ export default function VeillePage() {
                   }`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${cacheIsFresh ? "bg-[#3d6b0f]" : "bg-orange-500"}`} />
                     {cacheIsFresh
-                      ? `Veille en cache — generee ${formatCacheAge(cacheInfo!.createdAt)}`
-                      : `Cache expire — generee ${formatCacheAge(cacheInfo!.createdAt)}`}
+                      ? `Veille en cache — ${formatCacheDate(cacheInfo!.createdAt)}`
+                      : `Cache expiré — ${formatCacheDate(cacheInfo!.createdAt)}`}
                   </span>
                   {cacheInfo?.focus && (
                     <span className="text-xs text-gray-400">Focus : {cacheInfo.focus}</span>
