@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     });
 
     const { error } = await resend.emails.send({
-      from: "Prodige RH Connect <noreply@prodige-rh.fr>",
+      from: "Prodige RH Connect <onboarding@resend.dev>",
       to: ["houllegatte.arnaud@gmail.com"],
       subject: sujet?.trim() || "Message support – Prodige RH Connect",
       html: `
