@@ -66,9 +66,10 @@ export default function Home() {
             alt="Prodige RH"
             className="h-10"
           />
-          <p className="text-sm text-gray-400 hidden sm:block">
-            Outils professionnels
-          </p>
+          <div className="hidden sm:flex flex-col items-end">
+            <p className="text-sm text-gray-400">Outils professionnels</p>
+            <p className="text-xs text-gray-300">by Arnaud</p>
+          </div>
         </div>
       </header>
 
