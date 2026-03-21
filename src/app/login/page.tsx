@@ -65,9 +65,14 @@ function LoginForm() {
           <img
             src="https://images.squarespace-cdn.com/content/v1/6899b74809899f1d0b9b0b17/a96abffa-706a-4cf0-a1f9-76421c8f822e/prodige+rh+logo+transparent.png?format=1500w"
             alt="Prodige RH"
-            className="h-10 mx-auto mb-4"
+            className="h-10 mx-auto mb-3"
           />
-          <p className="text-white/25 text-sm">Accès réservé à l&apos;équipe Prodige RH</p>
+          <p
+            className="text-white text-2xl font-light tracking-[0.25em] uppercase"
+            style={{ fontFamily: "Syne, sans-serif", letterSpacing: "0.3em" }}
+          >
+            Connect
+          </p>
         </div>
 
         <div
