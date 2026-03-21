@@ -71,7 +71,19 @@ ${d.prochain_rdv ? `\nProchain RDV : ${d.prochain_rdv}` : ""}`;
 
   const handleCopy = async () => {
     if (!data) return;
-    await navigator.clipboard.writeText(buildText(data));
+    const text = buildText(data);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const el = document.createElement("textarea");
+      el.value = text;
+      el.style.position = "fixed";
+      el.style.opacity = "0";
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
