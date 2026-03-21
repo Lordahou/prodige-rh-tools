@@ -82,21 +82,23 @@ Genere un rapport JSON avec cette structure exacte. Inclus OBLIGATOIREMENT des U
 }
 
 Regles :
-- 4-6 tendances locales ancrees dans le tissu economique local (agroalimentaire, industrie, services, collectivites, sante)
-- 5-8 profils penuriques pertinents pour Laval/Mayenne/Pays de la Loire
-- 2-3 evolutions reglementaires recentes
-- 3 idees LinkedIn pour Prodige RH
-- 4-6 chiffres cles avec sources verifiables
+- EXACTEMENT 3 tendances locales (pas plus)
+- EXACTEMENT 4 profils penuriques (pas plus)
+- EXACTEMENT 2 evolutions reglementaires (pas plus)
+- EXACTEMENT 3 idees LinkedIn (pas plus)
+- EXACTEMENT 3 chiffres cles (pas plus)
+- Descriptions courtes : 2 phrases maximum par champ
 - URLs REELLES issues de ta recherche web (Pole Emploi, INSEE, DARES, Laval Mayenne Tech, prefecture, presse locale...)
-- Reponds UNIQUEMENT avec le JSON, sans texte avant ou apres${focusInstruction}`;
+- Reponds UNIQUEMENT avec le JSON valide et complet, sans texte avant ou apres${focusInstruction}`;
 
     // gpt-4o-search-preview effectue une vraie recherche web
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const completion = await (openai.chat.completions.create as any)({
       model: "gpt-4o-search-preview",
       web_search_options: {
-        search_context_size: "high",
+        search_context_size: "medium",
       },
+      max_tokens: 3500,
       messages: [
         { role: "user", content: prompt },
       ],
