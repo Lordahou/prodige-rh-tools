@@ -6,11 +6,23 @@ const USERS: Record<string, string> = {
   "clemence@prodige-rh.fr": process.env.AUTH_CLEMENCE_PASSWORD ?? "",
 };
 
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const aBytes = enc.encode(a);
+  const bBytes = enc.encode(b);
+  if (aBytes.length !== bBytes.length) return false;
+  let diff = 0;
+  for (let i = 0; i < aBytes.length; i++) {
+    diff |= aBytes[i] ^ bBytes[i];
+  }
+  return diff === 0;
+}
+
 export async function POST(request: NextRequest) {
   const { email, password } = await request.json();
   const expectedPassword = USERS[email?.toLowerCase?.()];
 
-  if (!expectedPassword || !password || password !== expectedPassword) {
+  if (!expectedPassword || !password || !timingSafeEqual(password, expectedPassword)) {
     return NextResponse.json({ error: "Email ou mot de passe incorrect" }, { status: 401 });
   }
 

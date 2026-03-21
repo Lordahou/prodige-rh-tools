@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth, safeErrorMessage } from "@/lib/auth-api";
 import { generateSyntheseDocx } from "@/lib/generate-docx";
 import type { CandidateData } from "@/lib/generate-docx";
 
@@ -114,6 +115,9 @@ function transformPayload(raw: LegacyPayload): CandidateData {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const raw: LegacyPayload = await request.json();
     const data: CandidateData = transformPayload(raw);

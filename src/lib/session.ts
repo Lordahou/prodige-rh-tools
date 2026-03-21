@@ -1,4 +1,10 @@
-const SECRET = () => process.env.SESSION_SECRET ?? "fallback-dev-secret-change-me";
+const SECRET = () => {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret && process.env.NODE_ENV === "production") {
+    throw new Error("SESSION_SECRET must be set in production");
+  }
+  return secret ?? "fallback-dev-secret-change-me";
+};
 
 async function getKey(secret: string): Promise<CryptoKey> {
   const enc = new TextEncoder();

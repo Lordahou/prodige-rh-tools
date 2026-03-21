@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth, safeErrorMessage } from "@/lib/auth-api";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -43,6 +44,9 @@ RÈGLES :
 - Retourne UNIQUEMENT le JSON`;
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const { transcript, objet, participants, date } = await request.json();
 
@@ -78,7 +82,6 @@ ${transcript}`;
       usage: { total_tokens: completion.usage?.total_tokens },
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Erreur inconnue";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(err) }, { status: 500 });
   }
 }
